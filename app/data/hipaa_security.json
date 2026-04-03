@@ -1,0 +1,488 @@
+{
+  "name": "HIPAA Security Rule",
+  "version": "45 CFR Part 164",
+  "controls": [
+    {
+      "control_id": "HIPAA-AS-1",
+      "title": "Security Management Process",
+      "description": "Covered entities and business associates must implement policies and procedures to prevent, detect, contain, and correct security violations affecting electronic protected health information. This includes conducting a thorough risk analysis to identify potential threats and vulnerabilities and implementing security measures to reduce those risks to a reasonable and appropriate level.",
+      "required_tags": [
+        "vulnerability-scanning",
+        "log-management"
+      ],
+      "optional_tags": [
+        "SIEM",
+        "security-monitoring"
+      ],
+      "evidence": [
+        "Formal risk analysis documentation covering all ePHI systems with identified threats, vulnerabilities, likelihood, and impact ratings",
+        "Risk management plan with documented security measures selected to address identified risks and reduce them to acceptable levels",
+        "Vulnerability scanning reports demonstrating periodic assessment of systems that store, process, or transmit ePHI",
+        "Sanction policy with records of workforce member sanctions applied for security policy violations"
+      ],
+      "sub_controls": [
+        {
+          "id": "164.308(a)(1)(ii)(A)",
+          "title": "Risk Analysis"
+        },
+        {
+          "id": "164.308(a)(1)(ii)(B)",
+          "title": "Risk Management"
+        },
+        {
+          "id": "164.308(a)(1)(ii)(C)",
+          "title": "Sanction Policy"
+        },
+        {
+          "id": "164.308(a)(1)(ii)(D)",
+          "title": "Information System Activity Review"
+        }
+      ]
+    },
+    {
+      "control_id": "HIPAA-AS-2",
+      "title": "Assigned Security Responsibility",
+      "description": "Covered entities and business associates must identify a security official who is responsible for the development and implementation of the policies and procedures required by the HIPAA Security Rule. This designated individual serves as the accountable authority for the organization's ePHI security program.",
+      "required_tags": [],
+      "optional_tags": [
+        "IAM"
+      ],
+      "evidence": [
+        "Formal written designation of a security official or HIPAA Security Officer with defined roles and responsibilities",
+        "Organizational chart or job description confirming the security official's authority and reporting structure",
+        "Evidence of security official involvement in policy development, risk management, and security program oversight"
+      ],
+      "sub_controls": [
+        {
+          "id": "164.308(a)(2)",
+          "title": "Designate a security official responsible for developing and implementing policies"
+        }
+      ]
+    },
+    {
+      "control_id": "HIPAA-AS-3",
+      "title": "Workforce Security",
+      "description": "Covered entities and business associates must implement policies and procedures to ensure that all members of the workforce have appropriate access to ePHI and prevent those workforce members who do not have access from obtaining access to ePHI. This includes authorization, supervision, and termination procedures.",
+      "required_tags": [
+        "access-control",
+        "IAM"
+      ],
+      "optional_tags": [
+        "privileged-access-management"
+      ],
+      "evidence": [
+        "Workforce clearance and authorization procedures demonstrating role-based access decisions based on minimum necessary principle",
+        "Onboarding and offboarding procedures with evidence of timely access provisioning and revocation tied to employment status",
+        "Periodic access review records demonstrating recertification of workforce member access to ePHI systems",
+        "Supervision procedures and records for workforce members authorized to access ePHI"
+      ],
+      "sub_controls": [
+        {
+          "id": "164.308(a)(3)(ii)(A)",
+          "title": "Authorization and/or Supervision"
+        },
+        {
+          "id": "164.308(a)(3)(ii)(B)",
+          "title": "Workforce Clearance Procedure"
+        },
+        {
+          "id": "164.308(a)(3)(ii)(C)",
+          "title": "Termination Procedures"
+        }
+      ]
+    },
+    {
+      "control_id": "HIPAA-AS-4",
+      "title": "Information Access Management",
+      "description": "Covered entities and business associates must implement policies and procedures for authorizing access to ePHI in a manner consistent with the minimum necessary standard and applicable requirements. Access authorization, establishment, and modification procedures must be formally defined and applied.",
+      "required_tags": [
+        "access-control",
+        "IAM"
+      ],
+      "optional_tags": [
+        "MFA",
+        "SSO"
+      ],
+      "evidence": [
+        "Access authorization policy defining the process for granting, modifying, and revoking access to ePHI systems and applications",
+        "Access request and approval records demonstrating formal authorization prior to granting ePHI system access",
+        "Role-based access control configuration aligned to job function and minimum necessary access requirements",
+        "Records of access modifications tied to workforce role changes or transfers with timely adjustment evidence"
+      ],
+      "sub_controls": [
+        {
+          "id": "164.308(a)(4)(ii)(A)",
+          "title": "Isolating Health Care Clearinghouse Functions"
+        },
+        {
+          "id": "164.308(a)(4)(ii)(B)",
+          "title": "Access Authorization"
+        },
+        {
+          "id": "164.308(a)(4)(ii)(C)",
+          "title": "Access Establishment and Modification"
+        }
+      ]
+    },
+    {
+      "control_id": "HIPAA-AS-5",
+      "title": "Security Awareness and Training",
+      "description": "Covered entities and business associates must implement a security awareness and training program for all members of the workforce, including management. Training must address security reminders, protection from malicious software, log-in monitoring, and password management.",
+      "required_tags": [
+        "security-awareness-training"
+      ],
+      "optional_tags": [
+        "phishing-simulation"
+      ],
+      "evidence": [
+        "Security awareness training program documentation covering required HIPAA Security Rule topics with training completion records for all workforce members",
+        "Annual or periodic training completion reports demonstrating workforce-wide coverage including newly hired employees",
+        "Security reminder communications such as policy updates, bulletins, or email notices distributed to the workforce",
+        "Training curriculum content showing coverage of malicious software protection, password management, and ePHI handling"
+      ],
+      "sub_controls": [
+        {
+          "id": "164.308(a)(5)(ii)(A)",
+          "title": "Security Reminders"
+        },
+        {
+          "id": "164.308(a)(5)(ii)(B)",
+          "title": "Protection from Malicious Software"
+        },
+        {
+          "id": "164.308(a)(5)(ii)(C)",
+          "title": "Log-in Monitoring"
+        },
+        {
+          "id": "164.308(a)(5)(ii)(D)",
+          "title": "Password Management"
+        }
+      ]
+    },
+    {
+      "control_id": "HIPAA-AS-6",
+      "title": "Security Incident Procedures",
+      "description": "Covered entities and business associates must implement policies and procedures to address security incidents, including procedures to identify, respond to, mitigate, and document security incidents and their outcomes. A security incident is defined as the attempted or successful unauthorized access, use, disclosure, modification, or destruction of ePHI.",
+      "required_tags": [
+        "incident-response"
+      ],
+      "optional_tags": [
+        "SOAR",
+        "forensics"
+      ],
+      "evidence": [
+        "Incident response policy and procedures defining identification, containment, eradication, recovery, and documentation steps for ePHI security incidents",
+        "Security incident log or ticketing records demonstrating incidents are tracked, investigated, and resolved with documented outcomes",
+        "Post-incident review documentation or lessons-learned records for significant security events",
+        "Evidence of incident response plan testing such as tabletop exercise records or simulation results"
+      ],
+      "sub_controls": [
+        {
+          "id": "164.308(a)(6)(ii)",
+          "title": "Response and Reporting \u2014 identify and respond to suspected or known security incidents"
+        }
+      ]
+    },
+    {
+      "control_id": "HIPAA-AS-7",
+      "title": "Contingency Plan",
+      "description": "Covered entities and business associates must establish and implement policies and procedures for responding to an emergency or other occurrence that damages systems containing ePHI. Contingency planning must include data backup, disaster recovery, and emergency mode operation plans to ensure continued access to ePHI.",
+      "required_tags": [
+        "backup",
+        "disaster-recovery"
+      ],
+      "optional_tags": [
+        "business-continuity",
+        "backup-testing"
+      ],
+      "evidence": [
+        "Data backup plan and backup job completion logs demonstrating regular backups of ePHI with defined recovery point objectives",
+        "Disaster recovery plan covering restoration of ePHI systems with defined recovery time and recovery point objectives",
+        "Backup restoration test records demonstrating successful recovery of ePHI from backup media",
+        "Emergency mode operation procedures for maintaining access to critical ePHI during system outages"
+      ],
+      "sub_controls": [
+        {
+          "id": "164.308(a)(7)(ii)(A)",
+          "title": "Data Backup Plan"
+        },
+        {
+          "id": "164.308(a)(7)(ii)(B)",
+          "title": "Disaster Recovery Plan"
+        },
+        {
+          "id": "164.308(a)(7)(ii)(C)",
+          "title": "Emergency Mode Operation Plan"
+        },
+        {
+          "id": "164.308(a)(7)(ii)(D)",
+          "title": "Testing and Revision Procedures"
+        },
+        {
+          "id": "164.308(a)(7)(ii)(E)",
+          "title": "Applications and Data Criticality Analysis"
+        }
+      ]
+    },
+    {
+      "control_id": "HIPAA-AS-8",
+      "title": "Evaluation",
+      "description": "Covered entities and business associates must perform a periodic technical and non-technical evaluation in response to environmental or operational changes affecting the security of ePHI. Evaluations establish the extent to which security policies and procedures meet HIPAA Security Rule requirements.",
+      "required_tags": [
+        "vulnerability-scanning"
+      ],
+      "optional_tags": [
+        "penetration-testing"
+      ],
+      "evidence": [
+        "Periodic security evaluation or assessment reports measuring compliance with HIPAA Security Rule standards",
+        "Vulnerability scan results from assessments triggered by significant system changes or environmental updates",
+        "Evaluation methodology documentation describing scope, frequency, and criteria used for technical and non-technical assessments",
+        "Remediation tracking records for findings identified during security evaluations with resolution evidence"
+      ],
+      "sub_controls": [
+        {
+          "id": "164.308(a)(8)",
+          "title": "Perform periodic technical and non-technical evaluation of security safeguards in response to environmental or operational changes"
+        }
+      ]
+    },
+    {
+      "control_id": "HIPAA-AS-9",
+      "title": "Business Associate Contracts and Other Arrangements",
+      "description": "Covered entities must obtain satisfactory assurances from business associates that they will appropriately safeguard ePHI, documented through a compliant business associate agreement. Business associates must obtain the same assurances from their own subcontractors that create, receive, maintain, or transmit ePHI.",
+      "required_tags": [
+        "vendor-management"
+      ],
+      "optional_tags": [
+        "third-party-risk"
+      ],
+      "evidence": [
+        "Business associate agreement inventory listing all vendors who create, receive, maintain, or transmit ePHI on the entity's behalf",
+        "Executed business associate agreements containing all required HIPAA provisions including permitted uses, safeguard requirements, and breach notification obligations",
+        "Vendor due diligence assessment records evaluating business associate security controls and HIPAA compliance posture",
+        "Subcontractor or downstream business associate agreement records where applicable"
+      ],
+      "sub_controls": [
+        {
+          "id": "164.308(b)(1)",
+          "title": "Written contract or other arrangement with business associates"
+        },
+        {
+          "id": "164.308(b)(3)",
+          "title": "Other arrangements where the BA is a government entity"
+        }
+      ]
+    },
+    {
+      "control_id": "HIPAA-PS-1",
+      "title": "Facility Access Controls",
+      "description": "Covered entities and business associates must implement policies and procedures to limit physical access to electronic information systems and the facilities in which they are housed, while ensuring that properly authorized access is allowed. This includes contingency operations, facility security plans, access control and validation procedures, and maintenance records.",
+      "required_tags": [],
+      "optional_tags": [
+        "asset-inventory"
+      ],
+      "evidence": [
+        "Facility security plan documenting physical safeguards implemented to protect ePHI systems and the facilities housing them",
+        "Physical access control logs for server rooms and data centers containing ePHI systems with periodic access list review records",
+        "Visitor and maintenance personnel access records demonstrating escort procedures and access logging",
+        "Physical access authorization list with evidence of periodic review and revocation of access for departed personnel"
+      ],
+      "sub_controls": [
+        {
+          "id": "164.310(a)(2)(i)",
+          "title": "Contingency Operations"
+        },
+        {
+          "id": "164.310(a)(2)(ii)",
+          "title": "Facility Security Plan"
+        },
+        {
+          "id": "164.310(a)(2)(iii)",
+          "title": "Access Control and Validation Procedures"
+        },
+        {
+          "id": "164.310(a)(2)(iv)",
+          "title": "Maintenance Records"
+        }
+      ]
+    },
+    {
+      "control_id": "HIPAA-PS-2",
+      "title": "Workstation Use",
+      "description": "Covered entities and business associates must implement policies and procedures that specify the proper functions to be performed, the manner in which those functions are to be performed, and the physical attributes of the surroundings of a specific workstation or class of workstation that can access ePHI.",
+      "required_tags": [
+        "endpoint-protection",
+        "configuration-management"
+      ],
+      "optional_tags": [
+        "hardening"
+      ],
+      "evidence": [
+        "Workstation use policy defining acceptable use, permitted activities, and required security configurations for workstations accessing ePHI",
+        "Endpoint protection deployment records demonstrating anti-malware and security controls active on all ePHI-accessing workstations",
+        "Configuration baseline documentation for workstations defining required security settings and software inventory",
+        "Records of workstation configuration compliance checks or audits"
+      ],
+      "sub_controls": [
+        {
+          "id": "164.310(b)",
+          "title": "Implement policies and procedures that specify the proper functions to be performed and physical attributes of surroundings for workstations"
+        }
+      ]
+    },
+    {
+      "control_id": "HIPAA-PS-3",
+      "title": "Workstation Security",
+      "description": "Covered entities and business associates must implement physical safeguards for all workstations that access ePHI to restrict access to authorized users only. Physical and technical safeguards work in concert to prevent unauthorized individuals from gaining access to ePHI through workstations.",
+      "required_tags": [
+        "endpoint-protection",
+        "hardening"
+      ],
+      "optional_tags": [
+        "EDR",
+        "device-encryption"
+      ],
+      "evidence": [
+        "Workstation security policy covering screen lock, physical positioning, and access restriction requirements for workstations accessing ePHI",
+        "Endpoint hardening standard with applied configuration evidence such as CIS benchmark compliance scan results",
+        "Endpoint protection platform reports showing active security controls and recent scan results for all workstations handling ePHI",
+        "Physical security measures documentation such as cable locks, privacy screens, or secured workstation placement in restricted areas"
+      ],
+      "sub_controls": [
+        {
+          "id": "164.310(c)",
+          "title": "Implement physical safeguards for workstations to restrict access to authorized users only"
+        }
+      ]
+    },
+    {
+      "control_id": "HIPAA-PS-4",
+      "title": "Device and Media Controls",
+      "description": "Covered entities and business associates must implement policies and procedures that govern the receipt and removal of hardware and electronic media containing ePHI into and out of a facility, and the movement of these items within the facility. Final disposal of media must render ePHI unrecoverable.",
+      "required_tags": [
+        "data-classification",
+        "encryption-at-rest"
+      ],
+      "optional_tags": [
+        "DLP"
+      ],
+      "evidence": [
+        "Media management policy covering handling, storage, transportation, reuse, and disposal of electronic media containing ePHI",
+        "Media disposal and destruction records with certificates of destruction from approved vendors for retired devices and media",
+        "Encryption configuration records for laptops, removable media, and portable devices used to store or transport ePHI",
+        "Hardware and media inventory log tracking assets that store ePHI with accountability records for their movement"
+      ],
+      "sub_controls": [
+        {
+          "id": "164.310(d)(2)(i)",
+          "title": "Disposal"
+        },
+        {
+          "id": "164.310(d)(2)(ii)",
+          "title": "Media Re-use"
+        },
+        {
+          "id": "164.310(d)(2)(iii)",
+          "title": "Accountability"
+        },
+        {
+          "id": "164.310(d)(2)(iv)",
+          "title": "Data Backup and Storage"
+        }
+      ]
+    },
+    {
+      "control_id": "HIPAA-TS-1",
+      "title": "Access Control",
+      "description": "Covered entities and business associates must implement technical policies and procedures for electronic information systems that maintain ePHI to allow access only to those persons or software programs that have been granted access rights. Access controls must enforce unique user identification, emergency access procedures, automatic logoff, and encryption and decryption.",
+      "required_tags": [
+        "IAM",
+        "MFA",
+        "access-control"
+      ],
+      "optional_tags": [
+        "PAM",
+        "SSO",
+        "zero-trust"
+      ],
+      "evidence": [
+        "Unique user identification enforcement evidence showing all ePHI system access attributed to individual accounts with no shared credentials",
+        "MFA enrollment and enforcement reports for systems containing or providing access to ePHI",
+        "Automatic logoff configuration records for workstations and applications handling ePHI with defined inactivity timeout settings",
+        "Emergency access procedure documentation with access log records for emergency account usage"
+      ],
+      "sub_controls": [
+        {
+          "id": "164.312(a)(2)(i)",
+          "title": "Unique User Identification"
+        },
+        {
+          "id": "164.312(a)(2)(ii)",
+          "title": "Emergency Access Procedure"
+        },
+        {
+          "id": "164.312(a)(2)(iii)",
+          "title": "Automatic Logoff"
+        },
+        {
+          "id": "164.312(a)(2)(iv)",
+          "title": "Encryption and Decryption"
+        }
+      ]
+    },
+    {
+      "control_id": "HIPAA-TS-2",
+      "title": "Audit Controls",
+      "description": "Covered entities and business associates must implement hardware, software, and procedural mechanisms that record and examine activity in information systems that contain or use ePHI. Audit logs must be sufficient to reconstruct events and detect unauthorized access or modification of ePHI.",
+      "required_tags": [
+        "log-management",
+        "SIEM"
+      ],
+      "optional_tags": [
+        "security-monitoring",
+        "log-collection"
+      ],
+      "evidence": [
+        "Audit logging configuration for all systems containing or using ePHI documenting events captured, log format, and retention period",
+        "SIEM ingestion records demonstrating collection and correlation of ePHI system logs with defined alerting for suspicious activity",
+        "Log review procedures and evidence of periodic log review activities for systems handling ePHI",
+        "Log integrity protection configuration such as centralized forwarding, write-once storage, or cryptographic verification preventing tampering"
+      ],
+      "sub_controls": [
+        {
+          "id": "164.312(b)",
+          "title": "Hardware, software, and/or procedural mechanisms that record and examine activity in systems containing or using ePHI"
+        }
+      ]
+    },
+    {
+      "control_id": "HIPAA-TS-3",
+      "title": "Transmission Security",
+      "description": "Covered entities and business associates must implement technical security measures to guard against unauthorized access to ePHI that is being transmitted over an electronic communications network. Encryption must be implemented to the degree it is reasonable and appropriate to protect ePHI in transit.",
+      "required_tags": [
+        "encryption-in-transit"
+      ],
+      "optional_tags": [
+        "VPN",
+        "network-firewall"
+      ],
+      "evidence": [
+        "TLS configuration documentation or scan results confirming ePHI is encrypted in transit using current strong cryptographic protocols",
+        "Network data flow diagram identifying all transmission paths carrying ePHI and confirming encryption is applied to each path",
+        "VPN configuration and usage records for remote access scenarios where workforce members transmit ePHI across public networks",
+        "Email and messaging security configuration demonstrating encryption for ePHI communicated via electronic messaging"
+      ],
+      "sub_controls": [
+        {
+          "id": "164.312(e)(2)(i)",
+          "title": "Integrity Controls"
+        },
+        {
+          "id": "164.312(e)(2)(ii)",
+          "title": "Encryption"
+        }
+      ]
+    }
+  ]
+}
