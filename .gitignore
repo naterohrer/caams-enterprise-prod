@@ -1,0 +1,48 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+*.egg-info/
+dist/
+build/
+.eggs/
+
+# Virtual environments
+venv/
+.venv/
+env/
+.env
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Editor
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# TLS certificates — never commit private keys
+certs/
+*.pem
+*.key
+*.crt
+
+# Log files
+logs/
+*.log
+
+# Runtime upload storage — contents are user data, not source
+uploads/*
+!uploads/.gitkeep
+
+# Vendored JS assets — downloaded at Docker build time via scripts/download-vendor.sh
+static/vendor/
