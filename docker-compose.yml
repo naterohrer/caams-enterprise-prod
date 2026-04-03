@@ -1,0 +1,130 @@
+name: caams-enterprise
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: caams
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD must be set}
+      POSTGRES_DB: caams
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - backend
+      - backup
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 512M
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U caams -d caams"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  caams:
+    build: .
+    image: caams-enterprise:latest
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      - "8000:8000"
+    environment:
+      # REQUIRED — generate with:
+      #   python3 -c 'import secrets; print(secrets.token_hex(32))'
+      CAAMS_SECRET_KEY: ${CAAMS_SECRET_KEY:?CAAMS_SECRET_KEY must be set}
+
+      # PostgreSQL connection (set DB_PASSWORD above)
+      DATABASE_URL: postgresql://caams:${DB_PASSWORD}@postgres:5432/caams
+
+      # Optional tuning
+      CAAMS_HOST: "0.0.0.0"
+      CAAMS_PORT: "8000"
+      CAAMS_ENABLE_DOCS: "${CAAMS_ENABLE_DOCS:-false}"
+      CAAMS_ACCESS_TOKEN_MINUTES: "${CAAMS_ACCESS_TOKEN_MINUTES:-30}"
+      CAAMS_REFRESH_TOKEN_DAYS: "${CAAMS_REFRESH_TOKEN_DAYS:-7}"
+      CAAMS_USE_HSTS: "${CAAMS_USE_HSTS:-false}"
+      CAAMS_CORS_ORIGIN: "${CAAMS_CORS_ORIGIN:-}"
+
+      # User invite flow (all optional — omit CAAMS_SMTP_HOST to disable email)
+      CAAMS_INVITE_TOKEN_HOURS: "${CAAMS_INVITE_TOKEN_HOURS:-72}"
+      CAAMS_APP_BASE_URL: "${CAAMS_APP_BASE_URL:-}"
+      CAAMS_SMTP_HOST: "${CAAMS_SMTP_HOST:-}"
+      CAAMS_SMTP_PORT: "${CAAMS_SMTP_PORT:-587}"
+      CAAMS_SMTP_FROM: "${CAAMS_SMTP_FROM:-}"
+      CAAMS_SMTP_USER: "${CAAMS_SMTP_USER:-}"
+      CAAMS_SMTP_PASSWORD: "${CAAMS_SMTP_PASSWORD:-}"
+      CAAMS_SMTP_USE_TLS: "${CAAMS_SMTP_USE_TLS:-true}"
+
+      # SSO / OIDC — optional; leave CAAMS_OIDC_ISSUER blank to disable
+      CAAMS_OIDC_ISSUER: "${CAAMS_OIDC_ISSUER:-}"
+      CAAMS_OIDC_CLIENT_ID: "${CAAMS_OIDC_CLIENT_ID:-}"
+      CAAMS_OIDC_CLIENT_SECRET: "${CAAMS_OIDC_CLIENT_SECRET:-}"
+      CAAMS_OIDC_DEFAULT_ROLE: "${CAAMS_OIDC_DEFAULT_ROLE:-viewer}"
+    volumes:
+      - caams_uploads:/app/uploads
+      - caams_logs:/app/logs
+      - caams_backups:/app/backups:ro
+    networks:
+      - backend
+    deploy:
+      resources:
+        limits:
+          cpus: "2.0"
+          memory: 1G
+    healthcheck:
+      test: ["CMD", "python", "-c",
+             "import urllib.request,sys; urllib.request.urlopen('http://localhost:8000/health/ready',timeout=4); sys.exit(0)"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+
+  pg_backup:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    user: postgres
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      PGPASSWORD: ${DB_PASSWORD:?DB_PASSWORD must be set}
+    volumes:
+      - caams_backups:/backups
+    networks:
+      - backup
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 256M
+    entrypoint:
+      - sh
+      - -c
+      - |
+        echo "Backup service started — running initial backup…"
+        pg_dump -h postgres -U caams caams | gzip > /backups/caams-$$(date +%Y%m%d-%H%M%S).sql.gz
+        echo "Initial backup complete."
+        while true; do
+          sleep 86400
+          pg_dump -h postgres -U caams caams | gzip > /backups/caams-$$(date +%Y%m%d-%H%M%S).sql.gz
+          ls -t /backups/*.sql.gz 2>/dev/null | tail -n +8 | xargs -r rm -f
+          echo "Daily backup complete."
+        done
+
+networks:
+  backend:
+    driver: bridge
+  backup:
+    driver: bridge
+
+volumes:
+  postgres_data:
+  caams_uploads:
+  caams_logs:
+  caams_backups:

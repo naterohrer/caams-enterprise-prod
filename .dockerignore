@@ -1,0 +1,49 @@
+# Version control
+.git
+.gitignore
+
+# Python artifacts
+__pycache__
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+*.egg-info
+.eggs
+dist
+build
+
+# Dev/test artifacts
+.pytest_cache
+.coverage
+htmlcov
+pytest.ini
+tests/
+
+# Local data (should be mounted as volumes in production)
+caams.db
+uploads/
+logs/
+
+# Certs (should be mounted as secrets)
+certs/
+
+# CI/CD
+.github/
+
+# Docs and scripts not needed at runtime
+*.md
+*.service
+install_service.sh
+import_cis.py
+
+# Virtual environments
+.venv
+venv
+env
+
+# Editor files
+.vscode
+.idea
+*.swp
+*.swo

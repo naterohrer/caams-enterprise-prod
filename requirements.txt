@@ -1,0 +1,18 @@
+fastapi==0.129.0
+pyotp==2.9.0          # TOTP/MFA support
+qrcode==8.0           # QR code generation (SVG, no Pillow needed)
+uvicorn[standard]==0.41.0
+h11>=0.16.0             # CVE-2025-43859: HTTP request smuggling fix (VULN-005)
+sqlalchemy==2.0.46
+pydantic==2.12.5
+openpyxl==3.1.5
+python-multipart==0.0.22
+aiofiles==25.1.0
+reportlab==4.4.10
+# Password hashing via app/auth.py using built-in hashlib.pbkdf2_hmac (no C deps)
+slowapi==0.1.9
+httpx==0.28.1  # required by starlette TestClient (used in tests)
+# JWT handled by app/jwt_utils.py (pure-Python HS256, no C dependencies)
+psycopg2-binary==2.9.10  # PostgreSQL driver
+alembic==1.15.1  # database migration management
+cryptography==46.0.6  # Fernet symmetric encryption for at-rest secrets (CF-005); 44.x had GHSA-r6ph-v2qm-q3c2; 46.0.5 had GHSA-m959-cc7f-wv43

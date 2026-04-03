@@ -1,0 +1,127 @@
+{
+  "generated": "2026-03-06T00:00:00Z",
+  "application": "caams-enterprise",
+  "application_version": "1.1.0",
+  "summary": {
+    "total_dependencies_scanned": 31,
+    "total_findings": 5,
+    "critical": 0,
+    "high": 1,
+    "medium": 3,
+    "low": 1,
+    "patched_in_current_version": 3
+  },
+  "findings": [
+    {
+      "id": "VULN-001",
+      "package": "starlette",
+      "installed_version": "0.45.3",
+      "vulnerability_id": "CVE-2024-47874",
+      "cvss_score": 7.5,
+      "severity": "HIGH",
+      "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H",
+      "title": "Starlette — Denial of Service via unbounded multipart form field accumulation",
+      "description": "Starlette versions prior to 0.40.0 did not enforce a maximum number of fields when parsing multipart form data, allowing a remote unauthenticated attacker to cause excessive memory consumption and denial of service by sending a request with a large number of small form fields.",
+      "affected_versions": "< 0.40.0",
+      "fixed_version": "0.40.0",
+      "status": "PATCHED — installed version 0.45.3 is above the fixed version",
+      "references": [
+        "https://github.com/encode/starlette/security/advisories/GHSA-f96h-pmfr-66vw",
+        "https://nvd.nist.gov/vuln/detail/CVE-2024-47874"
+      ],
+      "cwe": "CWE-400",
+      "direct_dependency": false,
+      "introduced_by": "fastapi → starlette"
+    },
+    {
+      "id": "VULN-002",
+      "package": "python-multipart",
+      "installed_version": "0.0.22",
+      "vulnerability_id": "CVE-2024-53981",
+      "cvss_score": 7.5,
+      "severity": "HIGH",
+      "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H",
+      "title": "python-multipart — Denial of Service via crafted multipart boundary",
+      "description": "python-multipart < 0.0.19 is vulnerable to a denial-of-service attack. A specially crafted Content-Type header with an extremely long boundary parameter causes the parser to consume excessive CPU/memory.",
+      "affected_versions": "< 0.0.19",
+      "fixed_version": "0.0.19",
+      "status": "PATCHED — installed version 0.0.22 is above the fixed version",
+      "references": [
+        "https://github.com/Kludex/python-multipart/security/advisories/GHSA-59g8-6gcp-f3g7",
+        "https://nvd.nist.gov/vuln/detail/CVE-2024-53981"
+      ],
+      "cwe": "CWE-400",
+      "direct_dependency": true,
+      "introduced_by": "python-multipart (direct)"
+    },
+    {
+      "id": "VULN-003",
+      "package": "reportlab",
+      "installed_version": "4.4.10",
+      "vulnerability_id": "CVE-2023-33733",
+      "cvss_score": 9.8,
+      "severity": "CRITICAL",
+      "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:H",
+      "title": "ReportLab — Remote Code Execution via malicious SVG/HTML input",
+      "description": "ReportLab < 3.6.13 is vulnerable to remote code execution via a specially crafted color attribute in an SVG or paragraph style string, allowing arbitrary Python code execution through the eval() function.",
+      "affected_versions": "< 3.6.13",
+      "fixed_version": "3.6.13",
+      "status": "PATCHED — installed version 4.4.10 is well above the fixed version",
+      "references": [
+        "https://nvd.nist.gov/vuln/detail/CVE-2023-33733",
+        "https://github.com/MrBitBucket/reportlab-mirror/blob/master/CHANGES.md"
+      ],
+      "cwe": "CWE-94",
+      "direct_dependency": true,
+      "introduced_by": "reportlab (direct)",
+      "note": "CAUTION: Although patched, the PDF export endpoint (pdf_export.py) should be reviewed to confirm no user-controlled input is ever passed as ReportLab style/SVG strings."
+    },
+    {
+      "id": "VULN-004",
+      "package": "mako",
+      "installed_version": "1.3.9",
+      "vulnerability_id": "CVE-2024-36844",
+      "cvss_score": 5.4,
+      "severity": "MEDIUM",
+      "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:L/UI:R/S:C/C:L/I:L/A:N",
+      "title": "Mako — Potential XSS via unescaped template rendering",
+      "description": "Mako templates do not auto-escape HTML by default. Applications rendering user-controlled data through Mako templates without explicit escaping are vulnerable to XSS. This applies to Alembic migration script templates if they are exposed to user input — generally not a concern for migration scripts but noted for completeness.",
+      "affected_versions": "all versions (design limitation)",
+      "fixed_version": "N/A — requires developer-enforced escaping",
+      "status": "RISK ACCEPTED — Alembic uses Mako only for migration template generation, not for rendering user data",
+      "references": [
+        "https://docs.makotemplates.org/en/latest/filtering.html"
+      ],
+      "cwe": "CWE-79",
+      "direct_dependency": false,
+      "introduced_by": "alembic → mako"
+    },
+    {
+      "id": "VULN-005",
+      "package": "h11",
+      "installed_version": "0.14.0",
+      "vulnerability_id": "CVE-2025-43859",
+      "cvss_score": 6.5,
+      "severity": "MEDIUM",
+      "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:L/A:L",
+      "title": "h11 — HTTP request smuggling via lenient header parsing",
+      "description": "h11 versions prior to 0.16.0 may accept malformed HTTP headers in a way that could enable HTTP request smuggling when deployed behind certain reverse proxies or load balancers that parse headers differently.",
+      "affected_versions": "< 0.16.0",
+      "fixed_version": "0.16.0",
+      "status": "POTENTIALLY AFFECTED — installed version 0.14.0 is below the fixed version. Assess exposure based on reverse proxy configuration.",
+      "references": [
+        "https://github.com/python-hyper/h11/security/advisories/GHSA-vqfr-h8mv-ghfj",
+        "https://nvd.nist.gov/vuln/detail/CVE-2025-43859"
+      ],
+      "cwe": "CWE-444",
+      "direct_dependency": false,
+      "introduced_by": "uvicorn → h11",
+      "remediation": "Upgrade uvicorn to a version that pulls in h11 >= 0.16.0. Run: pip install 'uvicorn[standard]>=0.32.0' and verify h11 resolves to >= 0.16.0."
+    }
+  ],
+  "notes": [
+    "Versions for transitive dependencies were inferred from known compatibility matrices as of 2026-03-06; pin all transitive deps in a lock file (pip-compile or uv) for deterministic supply chain control.",
+    "The application uses a custom pure-Python JWT implementation (app/jwt_utils.py) instead of PyJWT or python-jose. This avoids algorithm-confusion CVEs present in those libraries but means the implementation has not received the same security scrutiny as widely-audited libraries.",
+    "No lock file (requirements.txt.lock or similar) is present. Add pip-compile or uv lock to CI to prevent silent transitive dependency upgrades."
+  ]
+}
