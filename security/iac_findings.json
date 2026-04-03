@@ -1,0 +1,217 @@
+{
+  "generated": "2026-03-06T00:00:00Z",
+  "application": "caams-enterprise",
+  "scope": [
+    "Dockerfile",
+    "docker-compose.yml",
+    "entrypoint.sh",
+    "setup.sh",
+    "alembic.ini",
+    "caams.service",
+    ".github/workflows/ci.yml",
+    "scripts/download-vendor.sh"
+  ],
+  "summary": {
+    "total_findings": 14,
+    "critical": 0,
+    "high": 3,
+    "medium": 6,
+    "low": 5
+  },
+  "findings": [
+    {
+      "id": "IAC-001",
+      "severity": "HIGH",
+      "file": "docker-compose.yml",
+      "line": 27,
+      "title": "Application Port Exposed Directly to Host Without TLS Termination",
+      "description": "The caams service maps container port 8000 directly to the host with '8000:8000'. The application serves plaintext HTTP. No TLS termination, reverse proxy, or nginx/Caddy sidecar is configured. In production this means all traffic including JWT tokens and sensitive compliance data travels unencrypted. CAAMS_USE_HSTS defaults to false, confirming no TLS is expected at the app layer.",
+      "related_standards": [
+        "CIS Docker Benchmark v1.6 — 5.16 (Do not share the host's network namespace)",
+        "NIST 800-53 SC-8 (Transmission Confidentiality and Integrity)",
+        "PCI DSS v4.0 — 4.2.1 (Strong cryptography for data in transit)",
+        "NIST 800-53 SC-23 (Session Authenticity)"
+      ],
+      "remediation": "Add a TLS-terminating reverse proxy (nginx, Caddy, or Traefik) in front of the CAAMS container. Configure the caams service to only bind to the internal Docker network (remove the '8000:8000' mapping and use 'expose: [8000]'). Set CAAMS_USE_HSTS=true and CAAMS_CORS_ORIGIN to your domain. Example Caddy Caddyfile: 'caams.example.com { reverse_proxy caams:8000 }'"
+    },
+    {
+      "id": "IAC-002",
+      "severity": "HIGH",
+      "file": "scripts/download-vendor.sh",
+      "line": "12-18",
+      "title": "Vendored JS Assets Downloaded Without Integrity Verification (No SRI Hashes)",
+      "description": "The Docker build downloads Alpine.js from unpkg.com, Chart.js from cdn.jsdelivr.net, and Tailwind CSS play CDN from cdn.tailwindcss.com using curl without verifying cryptographic hashes. If any of these CDNs are compromised or if DNS is hijacked during the image build, malicious JavaScript can be silently injected into the built image and served to all users. The Tailwind CDN URL is not even version-pinned ('https://cdn.tailwindcss.com' returns the latest version).",
+      "related_standards": [
+        "CIS Controls v8 — 2.3 (Address Unauthorized Software)",
+        "NIST 800-53 SI-7 (Software, Firmware, and Information Integrity)",
+        "OWASP A08:2021 — Software and Data Integrity Failures",
+        "AWS Foundational Security — Supply Chain Risk"
+      ],
+      "remediation": "Pin the Tailwind CDN to a specific version. After downloading, verify SHA-256 hashes of each asset: expected=$(cat sha256sums.txt); echo \"$expected  $VENDOR/alpine.min.js\" | sha256sum -c. Maintain a sha256sums.txt file in the repository. Better: vendor these assets at a fixed commit using npm pack or by copying the files directly into the repository and removing the download step entirely."
+    },
+    {
+      "id": "IAC-003",
+      "severity": "HIGH",
+      "file": "docker-compose.yml",
+      "line": "73-95",
+      "title": "Backup Service Container Runs as Root",
+      "description": "The pg_backup service uses the postgres:16-alpine image and does not specify a user directive. The postgres image default entrypoint drops to the postgres user when running the postgres daemon, but when overriding the entrypoint with a shell script (as done here), the container runs as root. A compromised backup process could affect the shared caams_backups volume and the host system.",
+      "related_standards": [
+        "CIS Docker Benchmark v1.6 — 4.1 (Ensure a user for the container has been created)",
+        "NIST 800-53 AC-6 (Least Privilege)",
+        "AWS Foundational Security Best Practices — ECS.2"
+      ],
+      "remediation": "Add 'user: postgres' to the pg_backup service definition in docker-compose.yml. Ensure the backup volume is writable by UID 999 (the postgres user in the official image): chown 999:999 on the volume mount point. Alternatively create a dedicated minimal image with a non-root backup script."
+    },
+    {
+      "id": "IAC-004",
+      "severity": "MEDIUM",
+      "file": "docker-compose.yml",
+      "line": "11-17",
+      "title": "PostgreSQL Container Has No Resource Limits (CPU/Memory)",
+      "description": "No deploy.resources.limits are configured for any service (postgres, caams, pg_backup). Without limits, a single misbehaving service can consume all available host memory or CPU, causing denial of service for the entire stack. This is especially relevant for the CAAMS web service which handles file uploads and PDF generation.",
+      "related_standards": [
+        "CIS Docker Benchmark v1.6 — 5.10 (Set memory usage for container)",
+        "NIST 800-53 SC-5 (Denial of Service Protection)",
+        "CIS Controls v8 — 12.3 (Manage Network Infrastructure)"
+      ],
+      "remediation": "Add resource limits to each service in docker-compose.yml:\ndeploy:\n  resources:\n    limits:\n      memory: 512m\n      cpus: '1.0'\nAdjust limits based on expected load. For production use Kubernetes with LimitRange policies."
+    },
+    {
+      "id": "IAC-005",
+      "severity": "MEDIUM",
+      "file": "docker-compose.yml",
+      "line": "3-101",
+      "title": "No Explicit Network Segmentation Between Services",
+      "description": "All three services (postgres, caams, pg_backup) share the default Docker Compose network. There is no separation between the application network and the database network. If the CAAMS application container is compromised, the attacker has direct network access to the PostgreSQL service on its native port 5432.",
+      "related_standards": [
+        "CIS Docker Benchmark v1.6 — 5.31 (Do not use Docker's default bridge network)",
+        "NIST 800-53 SC-7 (Boundary Protection)",
+        "PCI DSS v4.0 — 1.3.2 (Restrict inbound and outbound traffic)"
+      ],
+      "remediation": "Define explicit networks in docker-compose.yml: create a 'frontend' network for the caams service and a 'backend' network for postgres/pg_backup. Only connect caams to both networks; do not expose postgres to any external-facing network. Example:\nnetworks:\n  frontend:\n  backend:\n    internal: true\npostgres:\n  networks: [backend]\ncaams:\n  networks: [frontend, backend]"
+    },
+    {
+      "id": "IAC-006",
+      "severity": "MEDIUM",
+      "file": "Dockerfile",
+      "line": "19",
+      "title": "Runtime Stage Uses Unpinned python:3.11-slim Base Image",
+      "description": "Both the builder and runtime stages use 'python:3.11-slim' without a digest pin (e.g., python:3.11-slim@sha256:...). The tag is mutable — Docker Hub can serve different image layers for the same tag between builds. A supply chain compromise of the base image would silently affect the CAAMS container on the next build.",
+      "related_standards": [
+        "CIS Docker Benchmark v1.6 — 4.8 (Remove setuid/setgid permissions)",
+        "NIST 800-53 SI-7 (Software, Firmware, and Information Integrity)",
+        "OWASP A08:2021 — Software and Data Integrity Failures"
+      ],
+      "remediation": "Pin the base image to a specific digest: FROM python:3.11-slim@sha256:<current_digest>. Obtain the digest with: docker pull python:3.11-slim && docker inspect --format='{{index .RepoDigests 0}}' python:3.11-slim. Update the digest periodically as security patches are released to the base image."
+    },
+    {
+      "id": "IAC-007",
+      "severity": "MEDIUM",
+      "file": "docker-compose.yml",
+      "line": 44,
+      "title": "CAAMS_CORS_ORIGIN Defaults to Empty — CORS Entirely Disabled in Default Deployment",
+      "description": "The CAAMS_CORS_ORIGIN variable defaults to an empty string. The application code explicitly disallows all origins when CORS is not configured. While this is safe (CORS misconfiguration is the bigger risk), in a production deployment where the SPA and API are on the same origin this default silently breaks cross-origin requests. Operators may then set CAAMS_CORS_ORIGIN=* to 'fix' CORS, opening a critical vulnerability.",
+      "related_standards": [
+        "OWASP A01:2021 — Broken Access Control",
+        "NIST 800-53 AC-4 (Information Flow Enforcement)"
+      ],
+      "remediation": "Document clearly that CAAMS_CORS_ORIGIN must be set to the exact origin of the frontend (e.g., https://caams.example.com). Explicitly prohibit wildcard (*) values in the application code: if cors_origin == '*': raise RuntimeError('CAAMS_CORS_ORIGIN must not be wildcard'). Add this validation to the application startup checks in main.py."
+    },
+    {
+      "id": "IAC-008",
+      "severity": "MEDIUM",
+      "file": "Dockerfile / docker-compose.yml",
+      "line": "70-74 (Dockerfile)",
+      "title": "Container Filesystem Is Not Read-Only — Unnecessary Write Access",
+      "description": "The CAAMS container does not use a read-only root filesystem. Only /app/uploads and /app/logs require write access at runtime. A writable root filesystem enables an attacker with code execution to modify application binaries, write new scripts, and establish persistence.",
+      "related_standards": [
+        "CIS Docker Benchmark v1.6 — 5.12 (Mount container's root filesystem as read only)",
+        "NIST 800-53 CM-7 (Least Functionality)",
+        "AWS Foundational Security Best Practices — ECS.5"
+      ],
+      "remediation": "Add read_only: true to the caams service in docker-compose.yml and mount writable tmpfs for any runtime-writable paths except uploads and logs which already use named volumes:\nread_only: true\ntmpfs:\n  - /tmp\nThe uploads and logs volumes already provide writable overlays for those paths."
+    },
+    {
+      "id": "IAC-009",
+      "severity": "MEDIUM",
+      "file": ".github/workflows/ci.yml",
+      "line": 32,
+      "title": "Hardcoded Secret Key in CI Configuration",
+      "description": "The CI workflow uses a hardcoded CAAMS_SECRET_KEY value 'ci-test-secret-key-32-chars-exactly' in the test environment. While this is used for tests only, hardcoded secrets in CI YAML files can create a pattern where developers copy this value into production deployments. The key is also predictable (dictionary words), making it trivial to forge JWTs in any environment using this value.",
+      "related_standards": [
+        "CIS Controls v8 — 3.11 (Encrypt Sensitive Data at Rest)",
+        "NIST 800-53 IA-5 (Authenticator Management)",
+        "OWASP A07:2021 — Identification and Authentication Failures"
+      ],
+      "remediation": "Store the CI test secret in GitHub Actions Secrets (Settings → Secrets → Actions) and reference it as ${{ secrets.CAAMS_TEST_SECRET_KEY }}. Generate a random key for CI that is distinct from any production key: python3 -c 'import secrets; print(secrets.token_hex(32))'. Add a pre-commit hook or CI check that fails if the literal test key string appears in any non-test file."
+    },
+    {
+      "id": "IAC-010",
+      "severity": "LOW",
+      "file": "docker-compose.yml",
+      "line": 43,
+      "title": "HSTS Disabled by Default — No Transport Security Enforcement",
+      "description": "CAAMS_USE_HSTS defaults to false. When deployed behind a TLS-terminating proxy, HSTS should be enabled to prevent protocol downgrade attacks and cookie hijacking. Without HSTS, browsers will accept HTTP connections to the application domain.",
+      "related_standards": [
+        "NIST 800-53 SC-8 (Transmission Confidentiality and Integrity)",
+        "PCI DSS v4.0 — 4.2.1",
+        "CIS Controls v8 — 3.10"
+      ],
+      "remediation": "Set CAAMS_USE_HSTS=true in production deployments. Document this requirement explicitly in the README and in the setup.sh script. Consider making HSTS opt-out (enabled by default) with a warning when disabled."
+    },
+    {
+      "id": "IAC-011",
+      "severity": "LOW",
+      "file": "docker-compose.yml",
+      "line": 43,
+      "title": "API Documentation Disabled by Default But Easily Re-enabled",
+      "description": "CAAMS_ENABLE_DOCS defaults to false, correctly hiding /docs and /openapi.json. However this is controlled by a simple environment variable with no additional access control. If an operator sets CAAMS_ENABLE_DOCS=true in production for debugging, the full API schema (including all endpoint definitions, input models, and response structures) becomes unauthenticated public.",
+      "related_standards": [
+        "NIST 800-53 CM-6 (Configuration Settings)",
+        "CIS Controls v8 — 4.1 (Establish and Maintain a Secure Configuration Process)"
+      ],
+      "remediation": "When CAAMS_ENABLE_DOCS=true, gate the /docs and /openapi.json endpoints behind require_admin authentication. FastAPI does not natively support auth on docs endpoints but this can be achieved with a middleware that checks for a valid admin JWT before serving /docs/* paths."
+    },
+    {
+      "id": "IAC-012",
+      "severity": "LOW",
+      "file": "docker-compose.yml",
+      "line": "82-95",
+      "title": "Backup Service Has No Backup Integrity Verification or Encryption",
+      "description": "The pg_backup service creates plaintext gzip-compressed SQL dumps. Backups contain all application data including user credentials (PBKDF2 hashes), TOTP secrets, SMTP passwords, and compliance evidence. They are not encrypted. The backup directory is mounted read-only in the caams container but the pg_backup container has full write access.",
+      "related_standards": [
+        "NIST 800-53 CP-9 (System Backup)",
+        "PCI DSS v4.0 — 12.3.3 (Cryptographic key management)",
+        "CIS Controls v8 — 11.3 (Establish and Maintain a Data Recovery Practice)"
+      ],
+      "remediation": "Encrypt backup files at rest using age or GPG: pg_dump ... | gzip | age -r <public_key> > backup.sql.gz.age. Store the decryption key offline. Add SHA-256 checksums alongside each backup file. Implement backup restore testing (at minimum monthly). Set retention policy beyond 7 files — consider 30-day retention for compliance."
+    },
+    {
+      "id": "IAC-013",
+      "severity": "LOW",
+      "file": "Dockerfile",
+      "line": "13-15",
+      "title": "Builder Stage Installs curl and Does Not Fully Remove It",
+      "description": "The builder stage installs curl to download vendor assets then purges it with 'apt-get purge -y curl'. However apt-get purge may leave residual files and the purge happens in the same RUN layer as the installation. While curl is not copied to the final runtime image, the purge pattern could be improved.",
+      "related_standards": [
+        "CIS Docker Benchmark v1.6 — 4.3 (Do not install unnecessary packages in the container)",
+        "NIST 800-53 CM-7 (Least Functionality)"
+      ],
+      "remediation": "Move curl installation and purge to separate RUN commands or consider using a curl-free alternative. Since Alpine-based builder images include wget by default, consider changing the builder to python:3.11-alpine and using wget instead of curl. Alternatively pre-download the assets in a separate dedicated stage: FROM curlimages/curl AS downloader."
+    },
+    {
+      "id": "IAC-014",
+      "severity": "LOW",
+      "file": "alembic.ini",
+      "line": "N/A",
+      "title": "Alembic Migration Configuration May Log Database URL With Credentials",
+      "description": "Alembic's default logging configuration (if sqlalchemy.url is logged at DEBUG level) can expose the full DATABASE_URL including credentials in migration logs. The DATABASE_URL for PostgreSQL follows postgresql://user:password@host/db format.",
+      "related_standards": [
+        "NIST 800-53 AU-9 (Protection of Audit Information)",
+        "CIS Controls v8 — 8.2 (Collect Audit Logs)"
+      ],
+      "remediation": "Verify that alembic.ini sets the log level for sqlalchemy.engine to WARNING or higher: [logger_sqlalchemy] level = WARN. Never log the raw DATABASE_URL string. In entrypoint.sh, redact credentials before any logging: echo 'Running migrations...' (no URL echo). Review app/logging_config.py to ensure DATABASE_URL is not included in any startup log message."
+    }
+  ]
+}

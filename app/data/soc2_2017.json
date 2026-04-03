@@ -1,0 +1,321 @@
+{
+  "name": "SOC 2 Trust Services Criteria",
+  "version": "2017",
+  "controls": [
+    {
+      "control_id": "CC1",
+      "title": "Control Environment",
+      "description": "The entity demonstrates a commitment to integrity and ethical values and exercises oversight responsibility. Management establishes structures, reporting lines, and appropriate authorities and responsibilities in pursuit of organizational objectives.",
+      "required_tags": [],
+      "optional_tags": [
+        "IAM"
+      ],
+      "evidence": [
+        "Board or management committee charters and meeting minutes demonstrating oversight of internal controls",
+        "Documented organizational chart with clearly defined roles, responsibilities, and reporting lines",
+        "Code of conduct or ethics policy acknowledged by all personnel with records of annual attestation",
+        "Performance evaluation records showing accountability measures tied to control objectives"
+      ],
+      "sub_controls": [
+        {
+          "id": "CC1.1",
+          "title": "COSO Principle 1 \u2014 Demonstrates Commitment to Integrity and Ethical Values"
+        },
+        {
+          "id": "CC1.2",
+          "title": "COSO Principle 2 \u2014 Exercises Oversight Responsibility"
+        },
+        {
+          "id": "CC1.3",
+          "title": "COSO Principle 3 \u2014 Establishes Structure, Authority, and Responsibility"
+        },
+        {
+          "id": "CC1.4",
+          "title": "COSO Principle 4 \u2014 Demonstrates Commitment to Competence"
+        },
+        {
+          "id": "CC1.5",
+          "title": "COSO Principle 5 \u2014 Enforces Accountability"
+        }
+      ]
+    },
+    {
+      "control_id": "CC2",
+      "title": "Communication and Information",
+      "description": "The entity obtains or generates and uses relevant, quality information to support the functioning of internal controls. The entity internally communicates information, including objectives and responsibilities for internal control, necessary to support the functioning of internal control.",
+      "required_tags": [
+        "log-management"
+      ],
+      "optional_tags": [
+        "SIEM"
+      ],
+      "evidence": [
+        "Log management policy and procedures defining collection, retention, and review requirements",
+        "Evidence of centralized log aggregation covering critical systems with defined retention periods",
+        "Internal communication records such as policy distribution logs, security bulletins, or town hall documentation",
+        "Information quality assessments or data governance procedures demonstrating information reliability"
+      ],
+      "sub_controls": [
+        {
+          "id": "CC2.1",
+          "title": "COSO Principle 13 \u2014 Uses Relevant Information"
+        },
+        {
+          "id": "CC2.2",
+          "title": "COSO Principle 14 \u2014 Communicates Internally"
+        },
+        {
+          "id": "CC2.3",
+          "title": "COSO Principle 15 \u2014 Communicates Externally"
+        }
+      ]
+    },
+    {
+      "control_id": "CC3",
+      "title": "Risk Assessment",
+      "description": "The entity specifies objectives with sufficient clarity to enable the identification and assessment of risks relating to those objectives. The entity identifies risks to the achievement of its objectives across the entity and analyzes risks as a basis for determining how those risks should be managed.",
+      "required_tags": [
+        "vulnerability-scanning"
+      ],
+      "optional_tags": [
+        "threat-intelligence"
+      ],
+      "evidence": [
+        "Formal risk assessment documentation including risk register with likelihood, impact, and treatment decisions",
+        "Vulnerability scanning reports from authenticated scans run on an at least quarterly basis",
+        "Threat modeling or risk analysis artifacts tied to critical systems or data flows",
+        "Evidence of periodic risk assessment reviews and updates when significant changes occur"
+      ],
+      "sub_controls": [
+        {
+          "id": "CC3.1",
+          "title": "COSO Principle 6 \u2014 Specifies Suitable Objectives"
+        },
+        {
+          "id": "CC3.2",
+          "title": "COSO Principle 7 \u2014 Identifies and Analyzes Risk"
+        },
+        {
+          "id": "CC3.3",
+          "title": "COSO Principle 8 \u2014 Assesses Fraud Risk"
+        },
+        {
+          "id": "CC3.4",
+          "title": "COSO Principle 9 \u2014 Identifies and Analyzes Significant Change"
+        }
+      ]
+    },
+    {
+      "control_id": "CC4",
+      "title": "Monitoring of Controls",
+      "description": "The entity selects, develops, and performs ongoing and separate evaluations to ascertain whether the components of internal control are present and functioning. The entity evaluates and communicates internal control deficiencies in a timely manner to those parties responsible for taking corrective action.",
+      "required_tags": [
+        "security-monitoring",
+        "SIEM"
+      ],
+      "optional_tags": [
+        "log-management"
+      ],
+      "evidence": [
+        "SIEM platform configuration showing active correlation rules, dashboards, and alert thresholds",
+        "Security monitoring runbooks or procedures defining alert triage and escalation workflows",
+        "Records of internal control reviews or self-assessments with documented findings and remediation",
+        "Deficiency tracking log showing identified control gaps, owners, and closure evidence"
+      ],
+      "sub_controls": [
+        {
+          "id": "CC4.1",
+          "title": "COSO Principle 16 \u2014 Conducts Ongoing and/or Separate Evaluations"
+        },
+        {
+          "id": "CC4.2",
+          "title": "COSO Principle 17 \u2014 Evaluates and Communicates Deficiencies"
+        }
+      ]
+    },
+    {
+      "control_id": "CC5",
+      "title": "Control Activities",
+      "description": "The entity selects and develops control activities that contribute to the mitigation of risks to the achievement of objectives to acceptable levels. The entity also selects and develops general control activities over technology to support the achievement of objectives.",
+      "required_tags": [
+        "access-control",
+        "configuration-management"
+      ],
+      "optional_tags": [
+        "hardening"
+      ],
+      "evidence": [
+        "Access control policy and procedures including provisioning, review, and de-provisioning workflows",
+        "Configuration management baseline documentation and system configuration standards",
+        "Configuration drift detection reports or change validation records for critical systems",
+        "Sample of access reviews demonstrating periodic recertification of user entitlements"
+      ],
+      "sub_controls": [
+        {
+          "id": "CC5.1",
+          "title": "COSO Principle 10 \u2014 Selects and Develops Control Activities"
+        },
+        {
+          "id": "CC5.2",
+          "title": "COSO Principle 11 \u2014 Selects and Develops General Controls Over Technology"
+        },
+        {
+          "id": "CC5.3",
+          "title": "COSO Principle 12 \u2014 Deploys Control Activities Through Policies and Procedures"
+        }
+      ]
+    },
+    {
+      "control_id": "CC6",
+      "title": "Logical and Physical Access Controls",
+      "description": "The entity implements logical access security software, infrastructure, and architectures over protected information assets to protect them from security events to meet the entity's objectives. Physical access to facilities and protected information assets is restricted to authorized personnel.",
+      "required_tags": [
+        "IAM",
+        "MFA",
+        "access-control",
+        "encryption-at-rest"
+      ],
+      "optional_tags": [
+        "PAM",
+        "privileged-access-management",
+        "SSO"
+      ],
+      "evidence": [
+        "Identity and access management platform configuration showing role-based access enforcement and least privilege",
+        "MFA enrollment reports demonstrating coverage across privileged and remote access accounts",
+        "Encryption-at-rest configuration or attestation for databases, file stores, and backup media",
+        "Access provisioning and de-provisioning workflow records including timely offboarding evidence"
+      ],
+      "sub_controls": [
+        {
+          "id": "CC6.1",
+          "title": "Implements Logical Access Security Measures"
+        },
+        {
+          "id": "CC6.2",
+          "title": "Prior to Issuing System Credentials, Registration and Authorization Processes"
+        },
+        {
+          "id": "CC6.3",
+          "title": "Role-Based Access Controls"
+        },
+        {
+          "id": "CC6.4",
+          "title": "Restricts Physical Access"
+        },
+        {
+          "id": "CC6.5",
+          "title": "Logical Access Security Measures for Protection Against Threats"
+        },
+        {
+          "id": "CC6.6",
+          "title": "Security Measures Against Threats Outside System Boundaries"
+        },
+        {
+          "id": "CC6.7",
+          "title": "Transmission of Data Restricted to Authorized Individuals"
+        },
+        {
+          "id": "CC6.8",
+          "title": "Prevents or Detects Unauthorized or Malicious Software"
+        }
+      ]
+    },
+    {
+      "control_id": "CC7",
+      "title": "System Operations",
+      "description": "The entity detects and monitors for new vulnerabilities and responds to security threats and incidents in a timely manner to meet the entity's objectives. Operational procedures ensure the continued security and availability of systems and information.",
+      "required_tags": [
+        "endpoint-protection",
+        "network-monitoring",
+        "log-management"
+      ],
+      "optional_tags": [
+        "EDR",
+        "SIEM",
+        "vulnerability-scanning"
+      ],
+      "evidence": [
+        "Endpoint protection platform deployment reports showing coverage and active protection status across all endpoints",
+        "Network monitoring alerts and incident tickets demonstrating active threat detection and response",
+        "Centralized log management system configuration showing collection scope, retention, and integrity controls",
+        "Incident response records showing detection-to-containment timelines and post-incident reviews"
+      ],
+      "sub_controls": [
+        {
+          "id": "CC7.1",
+          "title": "Uses Detection and Monitoring Procedures"
+        },
+        {
+          "id": "CC7.2",
+          "title": "Monitors System Components for Anomalies"
+        },
+        {
+          "id": "CC7.3",
+          "title": "Evaluates Security Events"
+        },
+        {
+          "id": "CC7.4",
+          "title": "Responds to Security Incidents"
+        },
+        {
+          "id": "CC7.5",
+          "title": "Identifies, Develops, and Implements Remediation Activities"
+        }
+      ]
+    },
+    {
+      "control_id": "CC8",
+      "title": "Change Management",
+      "description": "The entity authorizes, designs, develops or acquires, configures, documents, tests, approves, and implements changes to infrastructure, data, software, and procedures to meet its change management objectives. Security testing is integrated into the software development and change management lifecycle.",
+      "required_tags": [
+        "configuration-management"
+      ],
+      "optional_tags": [
+        "SAST",
+        "code-scanning"
+      ],
+      "evidence": [
+        "Change management policy and procedures including approval workflows, testing requirements, and rollback plans",
+        "Change request records with evidence of technical review, security approval, and post-implementation validation",
+        "Configuration management database or asset inventory showing baseline configurations and change history",
+        "Code repository records or pipeline artifacts showing static analysis scans integrated into the deployment process"
+      ],
+      "sub_controls": [
+        {
+          "id": "CC8.1",
+          "title": "Authorizes, Designs, Develops or Acquires, Configures, Documents, Tests, Approves, and Implements Changes to Infrastructure, Data, Software, and Procedures"
+        }
+      ]
+    },
+    {
+      "control_id": "CC9",
+      "title": "Risk Mitigation",
+      "description": "The entity identifies, selects, and develops risk mitigation activities for risks arising from potential business disruptions and the use of vendors and business partners. Contingency and continuity plans are designed to mitigate the impact of significant threats.",
+      "required_tags": [
+        "vendor-management",
+        "backup"
+      ],
+      "optional_tags": [
+        "disaster-recovery",
+        "third-party-risk"
+      ],
+      "evidence": [
+        "Vendor management policy and third-party risk assessment records for critical service providers",
+        "Vendor contracts containing security requirements, SLAs, and audit rights provisions",
+        "Backup configuration documentation and successful backup completion logs covering critical systems",
+        "Business continuity or disaster recovery plan with evidence of periodic testing and tabletop exercises"
+      ],
+      "sub_controls": [
+        {
+          "id": "CC9.1",
+          "title": "Identifies, Selects, and Develops Risk Mitigation Activities"
+        },
+        {
+          "id": "CC9.2",
+          "title": "Assesses and Manages Risks Associated With Vendors and Business Partners"
+        }
+      ]
+    }
+  ]
+}
