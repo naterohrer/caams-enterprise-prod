@@ -1,0 +1,2332 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>CAAMS Enterprise — Unified Audit Platform</title>
+<script>if(localStorage.getItem('caams_dark')==='1')document.documentElement.classList.add('dark')</script>
+<!-- Vendored assets served locally; CDN fallback for local dev without running scripts/download-vendor.sh -->
+<script src="/static/vendor/tailwind.cdn.js" onerror="var s=document.createElement('script');s.src='https://cdn.tailwindcss.com';document.head.appendChild(s)"></script>
+<link rel="stylesheet" href="/static/app.css" />
+<script defer src="/static/vendor/alpine.min.js" onerror="var s=document.createElement('script');s.defer=true;s.src='https://unpkg.com/alpinejs@3.14.9/dist/cdn.min.js';document.head.appendChild(s)"></script>
+<script src="/static/vendor/chart.min.js" onerror="var s=document.createElement('script');s.src='https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js';document.head.appendChild(s)"></script>
+<script src="/static/app.js"></script>
+</head>
+<body class="h-full bg-gray-50" x-data="app()" x-init="init()" x-cloak>
+
+<!-- ── Toast ─────────────────────────────────────────────────────────── -->
+<div class="fixed top-4 right-4 z-[999] transition-all" x-show="toast" x-transition>
+  <div class="flex items-center gap-3 px-4 py-3 rounded-lg shadow-xl text-sm font-medium"
+       :class="toastType==='error'?'bg-red-50 border border-red-200 text-red-800':'bg-green-50 border border-green-200 text-green-800'">
+    <span x-text="toast"></span>
+    <button @click="toast=null" class="ml-1 opacity-60 hover:opacity-100 text-lg leading-none">&times;</button>
+  </div>
+</div>
+
+<!-- ── Loading ────────────────────────────────────────────────────────── -->
+<div x-show="view==='loading'" class="h-full flex items-center justify-center">
+  <div class="text-center">
+    <div class="w-12 h-12 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+    <p class="text-gray-500 text-sm">Loading CAAMS Enterprise…</p>
+  </div>
+</div>
+
+<!-- ── Setup Wizard ───────────────────────────────────────────────────── -->
+<div x-show="view==='setup'" class="h-full flex items-center justify-center bg-gradient-to-br from-indigo-900 via-indigo-800 to-indigo-700">
+  <div class="w-full max-w-md mx-4">
+    <div class="text-center mb-8">
+      <div class="w-16 h-16 bg-white/20 rounded-2xl flex items-center justify-center mx-auto mb-4 text-3xl">🛡️</div>
+      <h1 class="text-3xl font-bold text-white">CAAMS Enterprise</h1>
+      <p class="text-indigo-200 mt-1">Unified Audit Platform</p>
+      <p class="text-indigo-300 text-sm mt-3">First-time setup — create your admin account</p>
+    </div>
+    <div class="bg-white rounded-2xl shadow-2xl p-8">
+      <h2 class="text-lg font-semibold text-gray-900 mb-6">Create Admin Account</h2>
+      <div class="space-y-4">
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">Username</label>
+          <input type="text" x-model="f.username" placeholder="admin" @keyup.enter="doSetup()" />
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">Password</label>
+          <input type="password" x-model="f.password" placeholder="••••••••" @keyup.enter="doSetup()" />
+        </div>
+        <button class="btn btn-primary w-full justify-center py-2.5 mt-2" @click="doSetup()">Create Account &amp; Sign In</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── Login Page ─────────────────────────────────────────────────────── -->
+<div x-show="view==='login'" class="h-full flex items-center justify-center bg-gradient-to-br from-indigo-900 via-indigo-800 to-indigo-700">
+  <div class="w-full max-w-md mx-4">
+    <div class="text-center mb-8">
+      <div class="w-16 h-16 bg-white/20 rounded-2xl flex items-center justify-center mx-auto mb-4 text-3xl">🛡️</div>
+      <h1 class="text-3xl font-bold text-white">CAAMS Enterprise</h1>
+      <p class="text-indigo-200 mt-1">Unified Audit Platform</p>
+    </div>
+    <div class="bg-white rounded-2xl shadow-2xl p-8">
+      <!-- Step 1: Username + Password -->
+      <template x-if="!mfaPending">
+        <div>
+          <h2 class="text-lg font-semibold text-gray-900 mb-6">Sign In</h2>
+          <div class="space-y-4">
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Username</label>
+              <input type="text" x-model="f.username" placeholder="username" @keyup.enter="doLogin()" />
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Password</label>
+              <input type="password" x-model="f.password" placeholder="••••••••" @keyup.enter="doLogin()" />
+            </div>
+            <button class="btn btn-primary w-full justify-center py-2.5 mt-2" @click="doLogin()">Sign In</button>
+          </div>
+          <template x-if="oidcConfigured">
+            <div class="mt-6">
+              <div class="relative flex items-center">
+                <div class="flex-1 border-t border-gray-200"></div>
+                <span class="mx-3 text-xs text-gray-400 whitespace-nowrap">or continue with</span>
+                <div class="flex-1 border-t border-gray-200"></div>
+              </div>
+              <button @click="initiateSSOLogin()" class="mt-4 w-full flex items-center justify-center gap-2 border border-gray-300 rounded-lg py-2.5 px-4 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors">
+                <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15.3 15.3 0 010 20M12 2a15.3 15.3 0 000 20"/></svg>
+                Sign in with SSO
+              </button>
+            </div>
+          </template>
+        </div>
+      </template>
+      <!-- Step 2: MFA TOTP code -->
+      <template x-if="mfaPending">
+        <div>
+          <h2 class="text-lg font-semibold text-gray-900 mb-2">Two-Factor Authentication</h2>
+          <p class="text-sm text-gray-500 mb-6">Enter the 6-digit code from your authenticator app.</p>
+          <div class="space-y-4">
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Authentication Code</label>
+              <input type="text" x-model="mfaCode" placeholder="000000" maxlength="6" inputmode="numeric" autocomplete="one-time-code" @keyup.enter="doMFAVerify()" class="text-center text-2xl tracking-[0.5em] font-mono" />
+            </div>
+            <button class="btn btn-primary w-full justify-center py-2.5" @click="doMFAVerify()">Verify</button>
+            <button @click="mfaPending=false; mfaToken=null; mfaCode=''" class="w-full text-center text-sm text-gray-400 hover:text-gray-600">← Back to login</button>
+          </div>
+        </div>
+      </template>
+    </div>
+  </div>
+</div>
+
+<!-- ── Accept Invite ──────────────────────────────────────────────────── -->
+<div x-show="view==='acceptInvite'" class="h-full flex items-center justify-center bg-gradient-to-br from-indigo-900 via-indigo-800 to-indigo-700">
+  <div class="w-full max-w-md mx-4">
+    <div class="text-center mb-8">
+      <div class="w-16 h-16 bg-white/20 rounded-2xl flex items-center justify-center mx-auto mb-4 text-3xl">🛡️</div>
+      <h1 class="text-3xl font-bold text-white">CAAMS Enterprise</h1>
+      <p class="text-indigo-200 mt-1">You've been invited</p>
+    </div>
+    <div class="bg-white rounded-2xl shadow-2xl p-8">
+      <h2 class="text-lg font-semibold text-gray-900 mb-1">Set Your Password</h2>
+      <p class="text-sm text-gray-500 mb-6">Choose a password to activate your account and sign in.</p>
+      <div class="space-y-4">
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">Password</label>
+          <input type="password" x-model="f.password" placeholder="Min. 12 characters" @keyup.enter="doAcceptInvite()" />
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">Confirm Password</label>
+          <input type="password" x-model="f.password2" placeholder="••••••••" @keyup.enter="doAcceptInvite()" />
+        </div>
+        <button class="btn btn-primary w-full justify-center py-2.5 mt-2" @click="doAcceptInvite()">Activate Account &amp; Sign In</button>
+        <button @click="view='login'" class="w-full text-center text-sm text-gray-400 hover:text-gray-600 mt-1">← Back to login</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── Auditor View (external, token-only) ────────────────────────────── -->
+<div x-show="view==='auditorView'" class="min-h-full bg-gray-50">
+  <template x-if="auditorData">
+    <div>
+      <!-- Header -->
+      <div class="bg-indigo-900 text-white px-6 py-4 flex items-center justify-between">
+        <div class="flex items-center gap-3">
+          <div class="w-8 h-8 bg-indigo-500 rounded-lg flex items-center justify-center text-lg">🛡️</div>
+          <div>
+            <p class="font-bold text-sm">CAAMS Enterprise — Auditor View</p>
+            <p class="text-indigo-300 text-xs" x-text="'Shared with: '+auditorData.auditor_name"></p>
+          </div>
+        </div>
+        <div class="text-right text-xs text-indigo-300">
+          <p x-show="auditorData.share_expires_at" x-text="'Access expires: '+fmt(auditorData.share_expires_at)"></p>
+          <p x-show="!auditorData.share_expires_at">Access: no expiry</p>
+        </div>
+      </div>
+      <!-- Content -->
+      <div class="max-w-5xl mx-auto p-6 space-y-6">
+        <!-- Assessment summary -->
+        <div class="card">
+          <div class="flex items-start justify-between mb-3">
+            <div>
+              <h1 class="text-xl font-bold text-gray-900" x-text="auditorData.assessment.name"></h1>
+              <p class="text-sm text-gray-500 mt-0.5" x-text="auditorData.assessment.framework+' '+auditorData.assessment.framework_version"></p>
+            </div>
+            <span class="badge" :class="statusBadge(auditorData.assessment.status)" x-text="auditorData.assessment.status.replace('_',' ')"></span>
+          </div>
+          <!-- Score bar -->
+          <div class="flex items-center gap-3 mb-3">
+            <span class="text-xs text-gray-500">Coverage:</span>
+            <div class="flex-1 max-w-xs bg-gray-100 rounded-full h-2.5">
+              <div class="h-2.5 rounded-full" :style="'width:'+auditorData.score+'%'"
+                   :class="auditorData.score>=80?'bg-green-500':auditorData.score>=50?'bg-yellow-500':'bg-red-500'"></div>
+            </div>
+            <span class="font-semibold text-sm" :class="auditorData.score>=80?'text-green-600':auditorData.score>=50?'text-yellow-600':'text-red-600'"
+                  x-text="auditorData.score.toFixed(1)+'%'"></span>
+            <span class="text-xs text-gray-400" x-text="auditorData.covered+'/'+auditorData.total_controls+' covered'"></span>
+          </div>
+          <p class="text-sm text-gray-600 whitespace-pre-wrap" x-show="auditorData.assessment.scope_notes" x-text="'Scope: '+auditorData.assessment.scope_notes"></p>
+        </div>
+
+        <!-- Controls -->
+        <div class="card">
+          <h2 class="text-base font-semibold text-gray-800 mb-3">Controls</h2>
+          <div class="overflow-x-auto">
+            <table class="w-full">
+              <thead><tr><th>ID</th><th>Title</th><th>Status</th><th>Notes</th></tr></thead>
+              <tbody>
+                <template x-if="!auditorData.controls.length">
+                  <tr><td colspan="4" class="text-center text-gray-400 py-8">No controls in scope.</td></tr>
+                </template>
+                <template x-for="c in auditorData.controls" :key="c.control_id">
+                  <tr>
+                    <td class="font-mono text-xs text-gray-500" x-text="c.control_id"></td>
+                    <td class="text-sm font-medium text-gray-900" x-text="c.title"></td>
+                    <td><span class="badge" :class="statusBadge(c.status)" x-text="c.status.replace('_',' ')"></span></td>
+                    <td class="text-xs text-gray-500 max-w-xs truncate" x-text="c.notes||'—'"></td>
+                  </tr>
+                </template>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Open Findings -->
+        <template x-if="auditorData.open_findings.length">
+          <div class="card">
+            <h2 class="text-base font-semibold text-gray-800 mb-3">Open Findings (<span x-text="auditorData.open_findings.length"></span>)</h2>
+            <table class="w-full">
+              <thead><tr><th>Control</th><th>Title</th><th>Severity</th><th>Status</th></tr></thead>
+              <tbody>
+                <template x-for="f in auditorData.open_findings" :key="f.id">
+                  <tr>
+                    <td class="font-mono text-xs text-gray-500" x-text="f.control_id||'—'"></td>
+                    <td class="text-sm text-gray-800" x-text="f.title"></td>
+                    <td><span class="badge" :class="statusBadge(f.severity)" x-text="f.severity"></span></td>
+                    <td><span class="badge" :class="statusBadge(f.status)" x-text="f.status.replace('_',' ')"></span></td>
+                  </tr>
+                </template>
+              </tbody>
+            </table>
+          </div>
+        </template>
+
+        <!-- Sign-offs -->
+        <template x-if="auditorData.signoffs.length">
+          <div class="card">
+            <h2 class="text-base font-semibold text-gray-800 mb-3">Assessment History</h2>
+            <div class="space-y-2">
+              <template x-for="(s,i) in auditorData.signoffs" :key="i">
+                <div class="flex items-start gap-3 text-sm py-1.5 border-b border-gray-50 last:border-0">
+                  <span class="badge" :class="statusBadge(s.action)" x-text="s.action.replace(/_/g,' ')"></span>
+                  <span class="text-gray-700" x-text="s.user_name"></span>
+                  <span class="text-gray-400 text-xs" x-text="fmtDt(s.timestamp)"></span>
+                  <span class="text-gray-500 text-xs italic" x-show="s.comments" x-text="'— '+s.comments"></span>
+                </div>
+              </template>
+            </div>
+          </div>
+        </template>
+
+        <!-- Comment form -->
+        <div class="card">
+          <h2 class="text-base font-semibold text-gray-800 mb-3">Add a Comment</h2>
+          <p class="text-xs text-gray-500 mb-3">Comments are visible to the assessment team. Your name (<span class="font-medium" x-text="auditorData.auditor_name"></span>) will be shown.</p>
+          <div class="space-y-3">
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Control ID (optional)</label>
+              <input type="text" x-model="auditorCommentForm.control_id" placeholder="e.g. CC6.1 — leave blank for general comments" class="w-full" />
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Comment</label>
+              <textarea x-model="auditorCommentForm.comment_text" rows="3" placeholder="Your observation or question…" class="w-full"></textarea>
+            </div>
+            <button @click="addAuditorComment()" class="btn btn-primary">Submit Comment</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </template>
+</div>
+
+<!-- ── Main App ───────────────────────────────────────────────────────── -->
+<div x-show="!['setup','login','loading','acceptInvite','auditorView'].includes(view)" class="h-full flex overflow-hidden">
+
+  <!-- Sidebar -->
+  <nav class="w-64 flex-shrink-0 bg-indigo-900 flex flex-col overflow-hidden">
+    <div class="px-5 py-5 border-b border-indigo-800/60">
+      <div class="flex items-center gap-3">
+        <div class="w-9 h-9 bg-indigo-500 rounded-xl flex items-center justify-center text-xl">🛡️</div>
+        <div>
+          <p class="font-bold text-white text-sm leading-tight">CAAMS Enterprise</p>
+          <p class="text-indigo-300 text-xs">Audit Platform</p>
+        </div>
+      </div>
+    </div>
+    <div class="flex-1 overflow-y-auto py-4 px-3 space-y-1">
+      <button @click="nav('dashboard')"
+        :class="view==='dashboard'?'bg-indigo-700 text-white':'text-indigo-200 hover:bg-indigo-800/60 hover:text-white'"
+        class="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors">
+        <span>📊</span> Dashboard
+      </button>
+      <button @click="nav('assessments')"
+        :class="['assessments','assessment'].includes(view)?'bg-indigo-700 text-white':'text-indigo-200 hover:bg-indigo-800/60 hover:text-white'"
+        class="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors">
+        <span>📋</span> Assessments
+      </button>
+      <button @click="nav('frameworks')"
+        :class="view==='frameworks'?'bg-indigo-700 text-white':'text-indigo-200 hover:bg-indigo-800/60 hover:text-white'"
+        class="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors">
+        <span>🔗</span> Frameworks
+      </button>
+      <button @click="nav('tools')"
+        :class="view==='tools'?'bg-indigo-700 text-white':'text-indigo-200 hover:bg-indigo-800/60 hover:text-white'"
+        class="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors">
+        <span>🔧</span> Tools
+      </button>
+      <button @click="nav('auditlog')"
+        :class="view==='auditlog'?'bg-indigo-700 text-white':'text-indigo-200 hover:bg-indigo-800/60 hover:text-white'"
+        class="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors">
+        <span>📜</span> Audit Log
+      </button>
+      <template x-if="role==='admin'">
+        <button @click="nav('admin')"
+          :class="view==='admin'?'bg-indigo-700 text-white':'text-indigo-200 hover:bg-indigo-800/60 hover:text-white'"
+          class="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors">
+          <span>⚙️</span> Admin
+        </button>
+      </template>
+    </div>
+    <div class="px-4 py-4 border-t border-indigo-800/60 relative">
+      <div class="flex items-center gap-2 mb-3">
+        <div class="w-8 h-8 bg-indigo-600 rounded-full flex items-center justify-center text-white text-sm font-bold uppercase"
+             x-text="user?.username?.charAt(0)||'?'"></div>
+        <div class="flex-1 min-w-0">
+          <p class="text-white text-sm font-medium truncate" x-text="user?.username"></p>
+          <span class="badge text-xs" :class="role==='admin'?'bg-yellow-400/20 text-yellow-300':role==='contributor'?'bg-green-400/20 text-green-300':'bg-indigo-400/20 text-indigo-300'"
+                x-text="role"></span>
+        </div>
+        <!-- Notification bell -->
+        <div class="relative">
+          <button @click="notifOpen=!notifOpen; notifOpen&&loadNotifications()"
+                  class="relative flex items-center justify-center w-8 h-8 rounded-full text-indigo-300 hover:text-white hover:bg-indigo-700 transition-colors">
+            <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+            </svg>
+            <template x-if="notifications.total>0">
+              <span class="absolute -top-0.5 -right-0.5 min-w-[1.1rem] h-[1.1rem] bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center leading-none px-0.5"
+                    x-text="notifications.total>99?'99+':notifications.total"></span>
+            </template>
+          </button>
+          <!-- Notification dropdown -->
+          <div x-show="notifOpen" @click.outside="notifOpen=false" x-transition
+               class="absolute bottom-10 left-0 w-80 bg-white border border-gray-200 rounded-xl shadow-2xl z-50 overflow-hidden">
+            <div class="flex items-center justify-between px-4 py-3 border-b bg-gray-50">
+              <p class="text-sm font-semibold text-gray-800">My Tasks</p>
+              <button @click="notifOpen=false" class="text-gray-400 hover:text-gray-600 text-lg leading-none">&times;</button>
+            </div>
+            <div class="max-h-80 overflow-y-auto">
+              <!-- RFIs -->
+              <template x-if="notifications.rfis?.length">
+                <div>
+                  <p class="px-4 pt-3 pb-1 text-xs font-semibold text-gray-500 uppercase tracking-wide">RFIs assigned to me</p>
+                  <template x-for="r in notifications.rfis" :key="'r'+r.id">
+                    <button @click="notifOpen=false; nav('assessment',r.assessment_id)"
+                            class="w-full text-left px-4 py-2 hover:bg-indigo-50 border-b border-gray-100">
+                      <p class="text-sm font-medium text-gray-900 truncate" x-text="r.title"></p>
+                      <p class="text-xs text-gray-500 truncate" x-text="r.assessment_name"></p>
+                      <div class="flex items-center gap-2 mt-0.5">
+                        <span class="badge text-[10px]" :class="statusBadge(r.priority)" x-text="r.priority"></span>
+                        <span class="text-[10px] text-gray-400" x-show="r.due_date" x-text="'Due '+fmt(r.due_date)"></span>
+                      </div>
+                    </button>
+                  </template>
+                </div>
+              </template>
+              <!-- Findings -->
+              <template x-if="notifications.findings?.length">
+                <div>
+                  <p class="px-4 pt-3 pb-1 text-xs font-semibold text-gray-500 uppercase tracking-wide">Findings to remediate</p>
+                  <template x-for="f in notifications.findings" :key="'f'+f.id">
+                    <button @click="notifOpen=false; nav('assessment',f.assessment_id)"
+                            class="w-full text-left px-4 py-2 hover:bg-indigo-50 border-b border-gray-100">
+                      <p class="text-sm font-medium text-gray-900 truncate" x-text="f.title"></p>
+                      <p class="text-xs text-gray-500 truncate" x-text="f.assessment_name"></p>
+                      <div class="flex items-center gap-2 mt-0.5">
+                        <span class="badge text-[10px]" :class="statusBadge(f.severity)" x-text="f.severity"></span>
+                        <span class="text-[10px] text-gray-400" x-show="f.target_date" x-text="'Due '+fmt(f.target_date)"></span>
+                      </div>
+                    </button>
+                  </template>
+                </div>
+              </template>
+              <!-- Controls -->
+              <template x-if="notifications.controls?.length">
+                <div>
+                  <p class="px-4 pt-3 pb-1 text-xs font-semibold text-gray-500 uppercase tracking-wide">Controls assigned to me</p>
+                  <template x-for="c in notifications.controls" :key="'c'+c.control_id+c.assessment_id">
+                    <button @click="notifOpen=false; nav('assessment',c.assessment_id)"
+                            class="w-full text-left px-4 py-2 hover:bg-indigo-50 border-b border-gray-100">
+                      <p class="text-sm font-medium text-gray-900 font-mono" x-text="c.control_id"></p>
+                      <p class="text-xs text-gray-500 truncate" x-text="c.assessment_name"></p>
+                      <div class="flex items-center gap-2 mt-0.5">
+                        <span class="badge text-[10px]" :class="statusBadge(c.review_status)" x-text="(c.review_status||'').replace('_',' ')"></span>
+                        <span class="text-[10px] text-gray-400" x-show="c.due_date" x-text="'Due '+fmt(c.due_date)"></span>
+                      </div>
+                    </button>
+                  </template>
+                </div>
+              </template>
+              <!-- Empty state -->
+              <template x-if="!notifications.total">
+                <div class="px-4 py-8 text-center text-gray-400 text-sm">No tasks assigned to you.</div>
+              </template>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="flex items-center justify-between">
+        <button @click="logout()" class="text-indigo-300 hover:text-white text-xs py-1 transition-colors">← Sign out</button>
+        <button @click="toggleDarkMode()" class="text-indigo-300 hover:text-white transition-colors p-1 rounded"
+                :title="darkMode?'Switch to light mode':'Switch to dark mode'">
+          <!-- Moon: shown in light mode -->
+          <svg x-show="!darkMode" xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"/>
+          </svg>
+          <!-- Sun: shown in dark mode -->
+          <svg x-show="darkMode" xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"/>
+          </svg>
+        </button>
+      </div>
+    </div>
+    <!-- Legal / support links -->
+    <div class="px-4 py-2 border-t border-indigo-800/40 flex items-center justify-center gap-3 flex-wrap">
+      <a href="/privacy" target="_blank" rel="noopener noreferrer" class="text-indigo-400 hover:text-indigo-200 text-xs transition-colors">Privacy</a>
+      <span class="text-indigo-700 text-xs">&middot;</span>
+      <a href="/terms" target="_blank" rel="noopener noreferrer" class="text-indigo-400 hover:text-indigo-200 text-xs transition-colors">Terms</a>
+      <span class="text-indigo-700 text-xs">&middot;</span>
+      <a href="https://github.com/naterohrer/caams-enterprise-prod/issues" target="_blank" rel="noopener noreferrer" class="text-indigo-400 hover:text-indigo-200 text-xs transition-colors">Support</a>
+    </div>
+  </nav>
+
+  <!-- Main content -->
+  <main class="flex-1 overflow-y-auto bg-gray-50">
+
+    <!-- ══ DASHBOARD ══════════════════════════════════════════════════════ -->
+    <div x-show="view==='dashboard'" class="p-6 space-y-6">
+      <div class="flex items-center justify-between">
+        <h1 class="text-2xl font-bold text-gray-900">Dashboard</h1>
+        <button @click="loadDashboard()" class="btn btn-ghost text-xs">↻ Refresh</button>
+      </div>
+
+      <!-- Metric cards -->
+      <div class="grid grid-cols-2 lg:grid-cols-4 gap-4" x-show="dash">
+        <div class="card">
+          <p class="text-xs font-medium text-gray-500 uppercase tracking-wider mb-1">Overall Score</p>
+          <p class="text-3xl font-bold" :class="dash?.overall_score>=80?'text-green-600':dash?.overall_score>=50?'text-yellow-600':'text-red-600'"
+             x-text="(dash?.overall_score||0).toFixed(1)+'%'"></p>
+          <p class="text-xs text-gray-400 mt-1">across all frameworks</p>
+        </div>
+        <div class="card">
+          <p class="text-xs font-medium text-gray-500 uppercase tracking-wider mb-1">Assessments</p>
+          <p class="text-3xl font-bold text-indigo-600" x-text="dash?.assessment_count||0"></p>
+          <p class="text-xs text-gray-400 mt-1">active (non-archived)</p>
+        </div>
+        <div class="card">
+          <p class="text-xs font-medium text-gray-500 uppercase tracking-wider mb-1">Open Findings</p>
+          <p class="text-3xl font-bold" :class="(dash?.open_findings||0)>0?'text-red-600':'text-green-600'"
+             x-text="dash?.open_findings||0"></p>
+          <p class="text-xs text-gray-400 mt-1">open or in progress</p>
+        </div>
+        <div class="card">
+          <p class="text-xs font-medium text-gray-500 uppercase tracking-wider mb-1">Overdue Controls</p>
+          <p class="text-3xl font-bold" :class="(dash?.overdue_controls||0)>0?'text-orange-600':'text-green-600'"
+             x-text="dash?.overdue_controls||0"></p>
+          <p class="text-xs text-gray-400 mt-1">past due date</p>
+        </div>
+      </div>
+
+      <!-- Charts -->
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-6" x-show="dash">
+        <div class="card lg:col-span-2">
+          <h3 class="text-sm font-semibold text-gray-700 mb-4">Framework Compliance Scores</h3>
+          <div style="height:220px;position:relative">
+            <canvas id="fwChart"></canvas>
+          </div>
+        </div>
+        <div class="card">
+          <h3 class="text-sm font-semibold text-gray-700 mb-4">Findings by Severity</h3>
+          <div style="height:220px;position:relative">
+            <canvas id="findChart"></canvas>
+          </div>
+          <template x-if="dash && !Object.keys(dash.findings_by_severity||{}).length">
+            <p class="text-center text-gray-400 text-sm mt-2">No findings recorded</p>
+          </template>
+        </div>
+      </div>
+
+      <!-- Due soon + lifecycle -->
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6" x-show="dash">
+        <div class="card">
+          <h3 class="text-sm font-semibold text-gray-700 mb-4">Due for Renewal</h3>
+          <template x-if="!dash?.assessments_due_soon?.length">
+            <p class="text-gray-400 text-sm">No assessments due in the next 30 days.</p>
+          </template>
+          <template x-if="dash?.assessments_due_soon?.length">
+            <table class="w-full">
+              <thead><tr><th>Assessment</th><th>Due Date</th><th>Days</th></tr></thead>
+              <tbody>
+                <template x-for="a in dash.assessments_due_soon" :key="a.assessment_id">
+                  <tr>
+                    <td><button @click="nav('assessment',a.assessment_id)" class="text-indigo-600 hover:underline text-sm" x-text="a.assessment_name"></button></td>
+                    <td x-text="fmt(a.next_review_date)"></td>
+                    <td><span class="badge" :class="a.days_until<=7?'bg-red-100 text-red-700':'bg-yellow-100 text-yellow-700'" x-text="a.days_until+' days'"></span></td>
+                  </tr>
+                </template>
+              </tbody>
+            </table>
+          </template>
+        </div>
+        <div class="card">
+          <h3 class="text-sm font-semibold text-gray-700 mb-4">Assessment Pipeline</h3>
+          <div class="space-y-2" x-show="dash">
+            <template x-for="[status,count] in Object.entries(dash?.lifecycle_counts||{})" :key="status">
+              <div class="flex items-center justify-between py-1.5 border-b border-gray-50">
+                <span class="badge" :class="statusBadge(status)" x-text="status.replace('_',' ')"></span>
+                <span class="font-semibold text-gray-700" x-text="count"></span>
+              </div>
+            </template>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══ ASSESSMENTS LIST ═══════════════════════════════════════════════ -->
+    <div x-show="view==='assessments'" class="p-6 space-y-6">
+      <div class="flex items-center justify-between">
+        <h1 class="text-2xl font-bold text-gray-900">Assessments</h1>
+        <button @click="openCreateAssessment()" class="btn btn-primary">+ New Assessment</button>
+      </div>
+      <div class="card p-0 overflow-hidden">
+        <table class="w-full">
+          <thead><tr><th>Name</th><th>Framework</th><th>Status</th><th>Cadence</th><th>Score</th><th>Created</th><th>Actions</th></tr></thead>
+          <tbody>
+            <template x-if="!assessments.length">
+              <tr><td colspan="7" class="text-center text-gray-400 py-10">No assessments yet. Create one to get started.</td></tr>
+            </template>
+            <template x-for="a in assessments" :key="a.id">
+              <tr>
+                <td><button @click="nav('assessment',a.id)" class="text-indigo-600 hover:underline font-medium" x-text="a.name"></button></td>
+                <td class="text-gray-500" x-text="a.framework_name"></td>
+                <td><span class="badge" :class="statusBadge(a.status)" x-text="a.status.replace('_',' ')"></span></td>
+                <td class="text-xs">
+                  <template x-if="a.is_recurring">
+                    <span class="inline-flex items-center gap-1 text-indigo-600 font-medium">
+                      <svg xmlns="http://www.w3.org/2000/svg" class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+                      <span x-text="recurrenceLabel(a.recurrence_days)"></span>
+                    </span>
+                  </template>
+                  <template x-if="!a.is_recurring">
+                    <span class="text-gray-300">one-time</span>
+                  </template>
+                </td>
+                <td>
+                  <span x-show="a.score!=null" class="font-semibold text-sm"
+                        :class="a.score>=80?'text-green-600':a.score>=50?'text-yellow-600':'text-red-600'"
+                        x-text="(a.score||0).toFixed(1)+'%'"></span>
+                  <span x-show="a.score==null" class="text-gray-400">—</span>
+                </td>
+                <td class="text-gray-400 text-xs" x-text="fmt(a.created_at)"></td>
+                <td>
+                  <div class="flex items-center gap-2">
+                    <button @click="nav('assessment',a.id)" class="btn btn-ghost text-xs py-1 px-2">View</button>
+                    <button @click="cloneAssessment(a.id)" class="btn btn-ghost text-xs py-1 px-2">Clone</button>
+                    <button @click="confirmDelete('Delete assessment '+a.name+'?',()=>deleteAssessment(a.id))" class="text-red-500 hover:text-red-700 text-xs font-medium">Delete</button>
+                  </div>
+                </td>
+              </tr>
+            </template>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ══ ASSESSMENT DETAIL ══════════════════════════════════════════════ -->
+    <div x-show="view==='assessment'" class="flex flex-col h-full">
+      <template x-if="assessment">
+        <div class="flex flex-col h-full">
+          <!-- Header -->
+          <div class="bg-white border-b border-gray-200 px-6 pt-5 pb-0">
+            <div class="flex items-start justify-between mb-3">
+              <div>
+                <div class="flex items-center gap-2 text-xs text-gray-400 mb-1">
+                  <button @click="nav('assessments')" class="hover:text-indigo-600">Assessments</button>
+                  <span>›</span>
+                  <span class="text-gray-600" x-text="assessment?.name"></span>
+                </div>
+                <div class="flex items-center gap-3">
+                  <h1 class="text-xl font-bold text-gray-900" x-text="assessment?.name"></h1>
+                  <span class="badge" :class="statusBadge(assessment?.status)" x-text="assessment?.status?.replace('_',' ')"></span>
+                </div>
+                <p class="text-sm text-gray-500 mt-0.5" x-text="results?.framework_name+' · '+results?.framework_version"></p>
+              </div>
+              <!-- Lifecycle buttons -->
+              <div class="flex items-center gap-2">
+                <template x-if="assessment?.status==='draft' && ['admin','contributor'].includes(role)">
+                  <button @click="openLifecycle('submit_for_review')" class="btn btn-primary text-xs">Submit for Review →</button>
+                </template>
+                <template x-if="assessment?.status==='in_review' && role==='admin'">
+                  <button @click="openLifecycle('approve')" class="btn btn-green text-xs">✓ Approve</button>
+                </template>
+                <template x-if="assessment?.status==='in_review'">
+                  <button @click="openLifecycle('return')" class="btn btn-yellow text-xs">↩ Return to Draft</button>
+                </template>
+                <template x-if="['draft','in_review','approved'].includes(assessment?.status) && role==='admin'">
+                  <button @click="openLifecycle('archive')" class="btn btn-gray text-xs">Archive</button>
+                </template>
+                <button @click="cloneAssessment(assessment?.id)" class="btn btn-ghost text-xs">Clone</button>
+              </div>
+            </div>
+            <!-- Score bar -->
+            <template x-if="results">
+              <div class="flex items-center gap-3 mb-3 text-sm">
+                <span class="text-gray-500 text-xs">Coverage:</span>
+                <div class="flex-1 max-w-xs bg-gray-100 rounded-full h-2.5">
+                  <div class="h-2.5 rounded-full transition-all"
+                       :style="'width:'+results.score+'%'"
+                       :class="results.score>=80?'bg-green-500':results.score>=50?'bg-yellow-500':'bg-red-500'"></div>
+                </div>
+                <span class="font-semibold" :class="results.score>=80?'text-green-600':results.score>=50?'text-yellow-600':'text-red-600'"
+                      x-text="results.score.toFixed(1)+'%'"></span>
+                <span class="text-gray-400 text-xs" x-text="results.covered+'/'+results.total_controls+' covered'"></span>
+              </div>
+            </template>
+            <!-- Tabs -->
+            <div class="flex gap-0 border-b -mb-px">
+              <template x-for="t in [{k:'overview',l:'Overview'},{k:'controls',l:'Controls'},{k:'evidence',l:'Evidence'},{k:'findings',l:'Findings'},{k:'rfis',l:'RFIs'},{k:'risk',l:'Risk Acceptances'},{k:'shares',l:'Auditor Shares'},{k:'comments',l:'Comments'},{k:'log',l:'Audit Log'}]" :key="t.k">
+                <button @click="setSubview(t.k)"
+                  :class="sub===t.k?'border-indigo-600 text-indigo-600':'border-transparent text-gray-500 hover:text-gray-700'"
+                  class="px-4 py-2.5 text-sm font-medium border-b-2 transition-colors" x-text="t.l"></button>
+              </template>
+            </div>
+          </div>
+
+          <!-- Tab content -->
+          <div class="flex-1 overflow-y-auto p-6">
+
+            <!-- Overview -->
+            <div x-show="sub==='overview'" class="space-y-6">
+              <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <div class="card">
+                  <h3 class="text-sm font-semibold text-gray-700 mb-3">Scope Notes</h3>
+                  <p class="text-sm text-gray-600 whitespace-pre-wrap" x-text="assessment?.scope_notes||'No scope notes defined.'"></p>
+                </div>
+                <div class="card">
+                  <h3 class="text-sm font-semibold text-gray-700 mb-3">Framework</h3>
+                  <dl class="space-y-2 text-sm">
+                    <div class="flex justify-between"><dt class="text-gray-500">Framework</dt><dd class="text-gray-900" x-text="results?.framework_name"></dd></div>
+                    <div class="flex justify-between"><dt class="text-gray-500">Version</dt><dd class="text-gray-900" x-text="results?.framework_version"></dd></div>
+                    <div class="flex justify-between"><dt class="text-gray-500">Total Controls</dt><dd class="text-gray-900" x-text="results?.total_controls"></dd></div>
+                    <div class="flex justify-between"><dt class="text-gray-500">Covered</dt><dd class="text-green-600" x-text="results?.covered"></dd></div>
+                    <div class="flex justify-between"><dt class="text-gray-500">Partial</dt><dd class="text-yellow-600" x-text="results?.partial"></dd></div>
+                    <div class="flex justify-between"><dt class="text-gray-500">Not Covered</dt><dd class="text-red-600" x-text="results?.not_covered"></dd></div>
+                    <div class="flex justify-between"><dt class="text-gray-500">N/A</dt><dd class="text-gray-400" x-text="results?.not_applicable"></dd></div>
+                  </dl>
+                </div>
+              </div>
+              <div class="card">
+                <div class="flex items-center justify-between mb-3">
+                  <h3 class="text-sm font-semibold text-gray-700">Export</h3>
+                </div>
+                <div class="flex flex-wrap gap-3">
+                  <button @click="downloadFile('/assessments/'+assessment.id+'/export','assessment-'+assessment.id+'.xlsx')" class="btn btn-ghost text-sm">📥 XLSX Report</button>
+                  <button @click="downloadFile('/assessments/'+assessment.id+'/export/pdf','assessment-'+assessment.id+'.pdf')" class="btn btn-ghost text-sm">📥 PDF Report</button>
+                  <button @click="downloadFile('/assessments/'+assessment.id+'/export/soa','assessment-'+assessment.id+'-soa.xlsx')" class="btn btn-ghost text-sm">📥 SOA</button>
+                  <button @click="downloadFile('/assessments/'+assessment.id+'/export/evidence-package','assessment-'+assessment.id+'-evidence.zip')" class="btn btn-ghost text-sm">📥 Evidence ZIP</button>
+                </div>
+              </div>
+              <div class="card">
+                <div class="flex items-center justify-between mb-3">
+                  <h3 class="text-sm font-semibold text-gray-700">Tools in Scope</h3>
+                  <template x-if="['admin','contributor'].includes(role)">
+                    <button @click="openManageTools()" class="btn btn-ghost text-xs">Manage Tools</button>
+                  </template>
+                </div>
+                <template x-if="!assessmentTools.length">
+                  <p class="text-sm text-gray-400">No tools selected. Click "Manage Tools" to add tools to this assessment.</p>
+                </template>
+                <div class="flex flex-wrap gap-2">
+                  <template x-for="t in assessmentTools" :key="t.id">
+                    <span class="inline-flex items-center gap-1 bg-indigo-50 text-indigo-800 rounded-full px-3 py-1 text-xs font-medium">
+                      <span x-text="t.name"></span><template x-if="t.category"><span class="text-indigo-400" x-text="'· '+t.category"></span></template>
+                    </span>
+                  </template>
+                </div>
+              </div>
+              <div class="card">
+                <h3 class="text-sm font-semibold text-gray-700 mb-3">Recurring Schedule</h3>
+                <dl class="space-y-2 text-sm">
+                  <div class="flex justify-between"><dt class="text-gray-500">Recurring</dt><dd x-text="assessment?.is_recurring?'Yes':'No'"></dd></div>
+                  <div class="flex justify-between" x-show="assessment?.is_recurring">
+                    <dt class="text-gray-500">Recurrence</dt><dd x-text="recurrenceLabel(assessment?.recurrence_days)"></dd>
+                  </div>
+                  <div class="flex justify-between" x-show="assessment?.next_review_date">
+                    <dt class="text-gray-500">Next Review</dt><dd x-text="fmt(assessment?.next_review_date)"></dd>
+                  </div>
+                </dl>
+              </div>
+              <!-- Multi-framework coverage -->
+              <template x-if="multiFramework?.crosswalk?.length">
+                <div class="card">
+                  <h3 class="text-sm font-semibold text-gray-700 mb-3">Multi-Framework Coverage</h3>
+                  <p class="text-xs text-gray-400 mb-3">Estimated coverage of other frameworks using this assessment's tool stack.</p>
+                  <table class="w-full">
+                    <thead><tr><th>Framework</th><th>Score</th><th>Covered</th><th>Partial</th><th>Not Covered</th></tr></thead>
+                    <tbody>
+                      <template x-for="fw in multiFramework.crosswalk" :key="fw.framework_id">
+                        <tr>
+                          <td class="text-sm font-medium text-gray-800" x-text="fw.framework_name+' '+fw.framework_version"></td>
+                          <td><span class="font-semibold text-sm"
+                                    :class="fw.score>=80?'text-green-600':fw.score>=50?'text-yellow-600':'text-red-600'"
+                                    x-text="fw.score.toFixed(1)+'%'"></span></td>
+                          <td class="text-xs text-green-700" x-text="fw.covered"></td>
+                          <td class="text-xs text-yellow-700" x-text="fw.partial"></td>
+                          <td class="text-xs text-red-700" x-text="fw.not_covered"></td>
+                        </tr>
+                      </template>
+                    </tbody>
+                  </table>
+                </div>
+              </template>
+            </div>
+
+
+            <!-- Controls -->
+            <div x-show="sub==='controls'" class="space-y-4">
+              <div class="flex flex-wrap gap-3 items-center">
+                <input type="text" x-model="ctrlFilter" placeholder="Search controls…" class="w-64" />
+                <select x-model="ctrlStatusFilter" class="w-44">
+                  <option value="">All statuses</option>
+                  <option value="covered">Covered</option>
+                  <option value="partial">Partial</option>
+                  <option value="not_covered">Not Covered</option>
+                  <option value="not_applicable">N/A</option>
+                </select>
+                <span class="text-xs text-gray-400" x-text="filteredControls.length+' controls'"></span>
+              </div>
+              <div class="card p-0 overflow-hidden">
+                <table class="w-full">
+                  <thead><tr><th>ID</th><th>Title</th><th>Status</th><th>Assignee</th><th>Due</th><th></th></tr></thead>
+                  <template x-if="!filteredControls.length">
+                    <tbody><tr><td colspan="6" class="text-center text-gray-400 py-8">No controls match.</td></tr></tbody>
+                  </template>
+                  <template x-for="c in filteredControls" :key="c.control_id">
+                    <!-- Each iteration gets its own <tbody> so x-for has a single root
+                         element and the sibling x-if sub-controls row is not silently
+                         dropped (Alpine.js x-for only renders the first root element). -->
+                    <tbody>
+                      <!-- Parent control row -->
+                      <tr class="border-b border-gray-100 last:border-0">
+                        <td class="align-top pt-3">
+                          <div class="flex items-center gap-1">
+                            <template x-if="c.sub_controls?.length">
+                              <button @click="ctrlExpanded[c.control_id]=!ctrlExpanded[c.control_id]"
+                                      class="text-gray-400 hover:text-indigo-600 transition-colors flex-shrink-0"
+                                      :title="ctrlExpanded[c.control_id]?'Collapse sub-controls':'Expand sub-controls'">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5 transition-transform" :class="ctrlExpanded[c.control_id]?'rotate-90':''" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/></svg>
+                              </button>
+                            </template>
+                            <span class="font-mono text-xs text-gray-500" x-text="c.control_id"></span>
+                          </div>
+                        </td>
+                        <td class="max-w-sm align-top pt-2.5">
+                          <p class="font-medium text-sm text-gray-900 line-clamp-2" x-text="c.title"></p>
+                          <p class="text-xs text-gray-600 line-clamp-2 mt-0.5" x-text="c.description"></p>
+                          <!-- Covered-by tool chips -->
+                          <template x-if="c.covered_by?.length">
+                            <div class="flex flex-wrap gap-1 mt-1.5">
+                              <template x-for="tool in c.covered_by" :key="tool">
+                                <span class="inline-block bg-green-50 text-green-700 border border-green-200 rounded px-1.5 py-0.5 text-[10px] font-medium" x-text="tool"></span>
+                              </template>
+                            </div>
+                          </template>
+                          <template x-if="c.missing_tags?.length && c.status!=='not_applicable'">
+                            <div class="flex flex-wrap gap-1 mt-1">
+                              <template x-for="tag in c.missing_tags" :key="tag">
+                                <span class="inline-block bg-red-50 text-red-600 border border-red-200 rounded px-1.5 py-0.5 text-[10px]" x-text="'missing: '+tag"></span>
+                              </template>
+                            </div>
+                          </template>
+                        </td>
+                        <td class="align-top pt-2.5"><span class="badge" :class="statusBadge(c.status)" x-text="c.status.replace('_',' ')"></span></td>
+                        <td class="text-xs text-gray-500 align-top pt-3" x-text="c.assignee||'—'"></td>
+                        <td class="text-xs text-gray-500 align-top pt-3" x-text="fmt(c.due_date)"></td>
+                        <td class="align-top pt-2.5"><button @click="openControl(c)" class="btn btn-ghost text-xs py-1 px-2">Edit</button></td>
+                      </tr>
+                      <!-- Sub-controls expanded row -->
+                      <template x-if="ctrlExpanded[c.control_id] && c.sub_controls?.length">
+                        <tr class="bg-indigo-50/40">
+                          <td colspan="6" class="px-6 py-3">
+                            <p class="text-[10px] font-semibold text-indigo-500 uppercase tracking-widest mb-2">Sub-controls</p>
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-1">
+                              <template x-for="sc in c.sub_controls" :key="sc.id">
+                                <div class="flex items-start gap-2">
+                                  <!-- inherit parent status for visual indicator -->
+                                  <span class="mt-0.5 w-2 h-2 rounded-full flex-shrink-0"
+                                        :class="c.status==='covered'?'bg-green-400':c.status==='partial'?'bg-yellow-400':c.status==='not_applicable'?'bg-gray-300':'bg-red-400'"></span>
+                                  <span class="font-mono text-[11px] text-indigo-700 flex-shrink-0 w-14" x-text="sc.id"></span>
+                                  <span class="text-xs text-gray-700 leading-snug" x-text="sc.title"></span>
+                                </div>
+                              </template>
+                            </div>
+                          </td>
+                        </tr>
+                      </template>
+                    </tbody>
+                  </template>
+                </table>
+              </div>
+            </div>
+
+            <!-- Evidence -->
+            <div x-show="sub==='evidence'" class="space-y-4">
+              <div class="flex items-center justify-between">
+                <h2 class="text-lg font-semibold text-gray-800">Evidence Files</h2>
+                <button @click="openEvidenceUpload()" class="btn btn-primary text-sm">+ Upload Evidence</button>
+              </div>
+              <div class="card p-0 overflow-hidden">
+                <table class="w-full">
+                  <thead><tr><th>File</th><th>Control</th><th>Uploaded By</th><th>Status</th><th>Expires</th><th>Actions</th></tr></thead>
+                  <tbody>
+                    <template x-if="!evidence.length">
+                      <tr><td colspan="6" class="text-center text-gray-400 py-8">No evidence uploaded yet.</td></tr>
+                    </template>
+                    <template x-for="ev in evidence" :key="ev.id">
+                      <tr>
+                        <td>
+                          <p class="text-sm font-medium text-gray-900 truncate max-w-xs" x-text="ev.original_filename"></p>
+                          <p class="text-xs text-gray-400" x-text="formatBytes(ev.file_size)+(ev.description?' · '+ev.description:'')"></p>
+                        </td>
+                        <td class="font-mono text-xs text-gray-500" x-text="ev.control_id||'—'"></td>
+                        <td class="text-xs text-gray-500" x-text="ev.uploaded_by_name"></td>
+                        <td><span class="badge" :class="statusBadge(ev.approval_status)" x-text="ev.approval_status||'pending'"></span></td>
+                        <td class="text-xs text-gray-500" x-text="fmt(ev.expires_at)"></td>
+                        <td>
+                          <div class="flex items-center gap-2">
+                            <button @click="downloadEvidence(ev)" class="btn btn-ghost text-xs py-1 px-2">↓ Download</button>
+                            <template x-if="role==='admin' && ev.approval_status!=='approved'">
+                              <button @click="approveEvidence(ev.id,'approve')" class="text-green-600 hover:text-green-800 text-xs font-medium">✓ Approve</button>
+                            </template>
+                            <template x-if="role==='admin' && ev.approval_status!=='rejected'">
+                              <button @click="approveEvidence(ev.id,'reject')" class="text-yellow-600 hover:text-yellow-800 text-xs font-medium">Reject</button>
+                            </template>
+                            <button @click="confirmDelete('Delete evidence file?',()=>deleteEvidence(ev.id))" class="text-red-500 hover:text-red-700 text-xs font-medium">Delete</button>
+                          </div>
+                        </td>
+                      </tr>
+                    </template>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <!-- Findings -->
+            <div x-show="sub==='findings'" class="space-y-4">
+              <div class="flex items-center justify-between">
+                <h2 class="text-lg font-semibold text-gray-800">Findings</h2>
+                <template x-if="['admin','contributor'].includes(role)">
+                  <button @click="openCreateFinding()" class="btn btn-primary text-sm">+ New Finding</button>
+                </template>
+              </div>
+              <div class="card p-0 overflow-hidden">
+                <table class="w-full">
+                  <thead><tr><th>Title</th><th>Control</th><th>Severity</th><th>Status</th><th>Owner</th><th>Target</th><th></th></tr></thead>
+                  <tbody>
+                    <template x-if="!findings.length">
+                      <tr><td colspan="7" class="text-center text-gray-400 py-8">No findings recorded.</td></tr>
+                    </template>
+                    <template x-for="fn in findings" :key="fn.id">
+                      <tr>
+                        <td class="max-w-xs">
+                          <p class="font-medium text-sm text-gray-900 truncate" x-text="fn.title"></p>
+                          <p class="text-xs text-gray-400 truncate" x-text="fn.description"></p>
+                        </td>
+                        <td class="font-mono text-xs text-gray-500" x-text="fn.control_id||'—'"></td>
+                        <td><span class="badge" :class="statusBadge(fn.severity)" x-text="fn.severity"></span></td>
+                        <td><span class="badge" :class="statusBadge(fn.status)" x-text="fn.status.replace('_',' ')"></span></td>
+                        <td class="text-xs text-gray-500" x-text="fn.remediation_owner||'—'"></td>
+                        <td class="text-xs text-gray-500" x-text="fmt(fn.target_date)"></td>
+                        <td>
+                          <div class="flex items-center gap-2">
+                            <button @click="openEditFinding(fn)" class="btn btn-ghost text-xs py-1 px-2">Edit</button>
+                            <button @click="confirmDelete('Delete this finding?',()=>deleteFinding(fn.id))" class="text-red-500 hover:text-red-700 text-xs font-medium">Delete</button>
+                          </div>
+                        </td>
+                      </tr>
+                    </template>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <!-- RFIs -->
+            <div x-show="sub==='rfis'" class="space-y-4">
+              <div class="flex items-center justify-between">
+                <h2 class="text-lg font-semibold text-gray-800">Requests for Information</h2>
+                <button @click="openCreateRFI()" class="btn btn-primary text-sm">+ New RFI</button>
+              </div>
+              <div class="card p-0 overflow-hidden">
+                <table class="w-full">
+                  <thead><tr><th>Title</th><th>Priority</th><th>Status</th><th>Assigned To</th><th>Due</th><th>Actions</th></tr></thead>
+                  <tbody>
+                    <template x-if="!rfis.length">
+                      <tr><td colspan="6" class="text-center text-gray-400 py-8">No RFIs yet.</td></tr>
+                    </template>
+                    <template x-for="r in rfis" :key="r.id">
+                      <tr>
+                        <td>
+                          <p class="font-medium text-sm text-gray-900" x-text="r.title"></p>
+                          <p class="text-xs text-gray-400 truncate max-w-xs" x-text="r.description"></p>
+                        </td>
+                        <td><span class="badge" :class="statusBadge(r.priority)" x-text="r.priority"></span></td>
+                        <td><span class="badge" :class="statusBadge(r.status)" x-text="r.status"></span></td>
+                        <td class="text-xs text-gray-500" x-text="r.assigned_to||'—'"></td>
+                        <td class="text-xs text-gray-500" x-text="fmt(r.due_date)"></td>
+                        <td>
+                          <div class="flex items-center gap-2">
+                            <template x-if="r.status!=='closed'">
+                              <button @click="openRFIRespond(r)" class="btn btn-ghost text-xs py-1 px-2">Respond</button>
+                            </template>
+                            <template x-if="role==='admin' && r.status!=='closed'">
+                              <button @click="closeRFI(r.id)" class="text-gray-500 hover:text-gray-700 text-xs font-medium">Close</button>
+                            </template>
+                          </div>
+                        </td>
+                      </tr>
+                    </template>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <!-- Audit Log (per-assessment) -->
+            <div x-show="sub==='log'" class="space-y-4">
+              <h2 class="text-lg font-semibold text-gray-800">Assessment Audit Log</h2>
+              <div class="card p-0 overflow-hidden">
+                <table class="w-full">
+                  <thead><tr><th>Timestamp</th><th>User</th><th>Action</th><th>Details</th></tr></thead>
+                  <tbody>
+                    <template x-if="!assessmentLog.length">
+                      <tr><td colspan="4" class="text-center text-gray-400 py-8">No log entries.</td></tr>
+                    </template>
+                    <template x-for="e in assessmentLog" :key="e.id">
+                      <tr>
+                        <td class="text-xs text-gray-500 whitespace-nowrap" x-text="fmtDt(e.timestamp)"></td>
+                        <td class="text-xs text-gray-700" x-text="e.user_name||'system'"></td>
+                        <td class="font-mono text-xs text-indigo-700" x-text="e.action"></td>
+                        <td class="text-xs text-gray-500 max-w-sm truncate" x-text="fmtDetails(e.details)"></td>
+                      </tr>
+                    </template>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <!-- Risk Acceptances -->
+            <div x-show="sub==='risk'" class="space-y-4">
+              <div class="flex items-center justify-between">
+                <h2 class="text-lg font-semibold text-gray-800">Risk Acceptances</h2>
+                <template x-if="['admin','contributor'].includes(role)">
+                  <button @click="openCreateRiskAcceptance()" class="btn btn-primary text-sm">+ Record Acceptance</button>
+                </template>
+              </div>
+              <div class="card p-0 overflow-hidden">
+                <table class="w-full">
+                  <thead><tr><th>Control</th><th>Risk Rating</th><th>Justification</th><th>Approved By</th><th>Expires</th></tr></thead>
+                  <tbody>
+                    <template x-if="!riskAcceptances.length">
+                      <tr><td colspan="5" class="text-center text-gray-400 py-8">No risk acceptances recorded.</td></tr>
+                    </template>
+                    <template x-for="ra in riskAcceptances" :key="ra.id">
+                      <tr>
+                        <td class="font-mono text-xs text-gray-500" x-text="ra.control_id||'—'"></td>
+                        <td><span class="badge" :class="statusBadge(ra.risk_rating)" x-text="ra.risk_rating"></span></td>
+                        <td class="text-sm text-gray-700 max-w-sm">
+                          <p class="truncate" x-text="ra.justification"></p>
+                          <p class="text-xs text-gray-400 truncate" x-text="ra.residual_risk_notes"></p>
+                        </td>
+                        <td class="text-xs text-gray-500" x-text="ra.approved_by_name"></td>
+                        <td class="text-xs text-gray-500" x-text="fmt(ra.expires_at)"></td>
+                      </tr>
+                    </template>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <!-- Auditor Shares -->
+            <div x-show="sub==='shares'" class="space-y-4">
+              <div class="flex items-center justify-between">
+                <h2 class="text-lg font-semibold text-gray-800">Auditor Shares</h2>
+                <template x-if="['admin','contributor'].includes(role)">
+                  <button @click="openCreateShare()" class="btn btn-primary text-sm">+ Create Share Link</button>
+                </template>
+              </div>
+              <template x-if="newShareToken">
+                <div class="bg-green-50 border border-green-200 rounded-lg p-4 text-sm space-y-2">
+                  <p class="font-semibold text-green-800">✓ Share link created — copy it now, it will not be shown again.</p>
+                  <div>
+                    <p class="text-xs text-gray-600 mb-0.5">Full auditor URL (send this link):</p>
+                    <code class="block bg-white border border-green-200 rounded px-3 py-2 text-xs font-mono break-all" x-text="window.location.origin+'?token='+newShareToken+'&id='+assessment.id"></code>
+                  </div>
+                  <div>
+                    <p class="text-xs text-gray-600 mb-0.5">Raw token only:</p>
+                    <code class="block bg-white border border-green-200 rounded px-3 py-2 text-xs font-mono break-all" x-text="newShareToken"></code>
+                  </div>
+                </div>
+              </template>
+              <div class="card p-0 overflow-hidden">
+                <table class="w-full">
+                  <thead><tr><th>Auditor</th><th>Email</th><th>Prefix</th><th>Active</th><th>Accesses</th><th>Last Access</th><th>Expires</th><th></th></tr></thead>
+                  <tbody>
+                    <template x-if="!auditorShares.length">
+                      <tr><td colspan="8" class="text-center text-gray-400 py-8">No share links created.</td></tr>
+                    </template>
+                    <template x-for="s in auditorShares" :key="s.id">
+                      <tr>
+                        <td class="font-medium text-sm" x-text="s.auditor_name"></td>
+                        <td class="text-xs text-gray-500" x-text="s.auditor_email||'—'"></td>
+                        <td class="font-mono text-xs text-gray-500" x-text="s.token_prefix+'…'"></td>
+                        <td><span class="badge" :class="s.is_active?'bg-green-100 text-green-700':'bg-gray-100 text-gray-500'" x-text="s.is_active?'Active':'Revoked'"></span></td>
+                        <td class="text-xs text-gray-500 text-center" x-text="s.access_count"></td>
+                        <td class="text-xs text-gray-500" x-text="fmtDt(s.last_accessed)"></td>
+                        <td class="text-xs text-gray-500" x-text="fmt(s.expires_at)"></td>
+                        <td>
+                          <template x-if="s.is_active">
+                            <button @click="confirmDelete('Revoke share for '+s.auditor_name+'?',()=>revokeShare(s.id))" class="text-red-500 hover:text-red-700 text-xs font-medium">Revoke</button>
+                          </template>
+                        </td>
+                      </tr>
+                    </template>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <!-- Comments -->
+            <div x-show="sub==='comments'" class="space-y-4">
+              <div class="flex items-center justify-between">
+                <h2 class="text-lg font-semibold text-gray-800">Comments</h2>
+                <button @click="openCreateComment()" class="btn btn-primary text-sm">+ Add Comment</button>
+              </div>
+              <template x-if="!comments.length">
+                <div class="card text-gray-400 text-sm">No comments yet. Use comments to share observations with the team or auditors.</div>
+              </template>
+              <template x-for="c in comments" :key="c.id">
+                <div class="card">
+                  <div class="flex items-start justify-between mb-1">
+                    <div class="flex items-center gap-2 flex-wrap">
+                      <span class="font-medium text-sm text-gray-900" x-text="c.author_name"></span>
+                      <template x-if="c.control_id && c.control_id !== 'general'">
+                        <span class="font-mono text-xs bg-indigo-50 text-indigo-700 px-1.5 py-0.5 rounded" x-text="c.control_id"></span>
+                      </template>
+                      <template x-if="c.is_internal">
+                        <span class="badge bg-yellow-100 text-yellow-700 text-xs">internal</span>
+                      </template>
+                    </div>
+                    <span class="text-xs text-gray-400 flex-shrink-0 ml-2" x-text="fmtDt(c.created_at)"></span>
+                  </div>
+                  <p class="text-sm text-gray-700 whitespace-pre-wrap" x-text="c.comment_text"></p>
+                </div>
+              </template>
+            </div>
+
+          </div><!-- /tab content -->
+        </div>
+      </template>
+    </div><!-- /assessment detail -->
+
+    <!-- FRAMEWORKS -->
+    <div x-show="view==='frameworks'" class="p-6 space-y-6">
+      <h1 class="text-2xl font-bold text-gray-900">Frameworks</h1>
+      <template x-if="!frameworks.length">
+        <p class="text-gray-400">No frameworks loaded.</p>
+      </template>
+      <template x-for="fw in frameworks" :key="fw.id">
+        <div class="card">
+          <div class="flex items-start justify-between">
+            <div>
+              <h2 class="text-base font-semibold text-gray-900" x-text="fw.name"></h2>
+              <p class="text-xs text-gray-400 mt-0.5" x-text="'Version: '+(fw.version||'—')+' · Controls: '+(fw.control_count||0)"></p>
+              <p class="text-sm text-gray-600 mt-1" x-text="fw.description||''"></p>
+            </div>
+            <button @click="toggleFrameworkControls(fw)" class="btn btn-ghost text-xs"
+              x-text="frameworkControls[fw.id]?'Hide Controls':'Show Controls'"></button>
+          </div>
+          <template x-if="frameworkControls[fw.id]">
+            <div class="mt-4 overflow-x-auto">
+              <table class="w-full">
+                <thead><tr><th></th><th>ID</th><th>Title</th><th>Required Tags</th></tr></thead>
+                <template x-for="c in frameworkControls[fw.id]" :key="c.id">
+                  <tbody>
+                    <tr class="border-b border-gray-100 last:border-0">
+                      <td class="w-6 pr-1 align-middle">
+                        <template x-if="c.sub_controls?.length">
+                          <button @click="fwCtrlExpanded[fw.id+':'+c.control_id]=!fwCtrlExpanded[fw.id+':'+c.control_id]"
+                                  class="text-gray-400 hover:text-indigo-600 transition-colors"
+                                  :title="fwCtrlExpanded[fw.id+':'+c.control_id]?'Collapse':'Expand sub-controls'">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="w-3 h-3 transition-transform" :class="fwCtrlExpanded[fw.id+':'+c.control_id]?'rotate-90':''" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/></svg>
+                          </button>
+                        </template>
+                      </td>
+                      <td class="font-mono text-xs text-gray-500" x-text="c.control_id"></td>
+                      <td class="text-sm text-gray-800" x-text="c.title"></td>
+                      <td class="text-xs text-gray-400" x-text="(c.required_tags||[]).join(', ')||'none'"></td>
+                    </tr>
+                    <template x-if="fwCtrlExpanded[fw.id+':'+c.control_id] && c.sub_controls?.length">
+                      <tr class="bg-indigo-50/40">
+                        <td colspan="4" class="px-6 py-2">
+                          <div class="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-0.5">
+                            <template x-for="sc in c.sub_controls" :key="sc.id">
+                              <div class="flex items-start gap-2 py-0.5">
+                                <span class="font-mono text-[11px] text-indigo-700 flex-shrink-0 w-20" x-text="sc.id"></span>
+                                <span class="text-xs text-gray-600 leading-snug" x-text="sc.title"></span>
+                              </div>
+                            </template>
+                          </div>
+                        </td>
+                      </tr>
+                    </template>
+                  </tbody>
+                </template>
+              </table>
+            </div>
+          </template>
+        </div>
+      </template>
+
+      <!-- Crosswalk comparison -->
+      <template x-if="frameworks.length >= 2">
+        <div class="card space-y-4">
+          <h2 class="text-base font-semibold text-gray-900">Framework Crosswalk</h2>
+          <p class="text-xs text-gray-400">Select two frameworks to see explicit mappings and tag-based overlaps.</p>
+          <div class="flex flex-wrap gap-3 items-end">
+            <div>
+              <label class="block text-xs font-medium text-gray-600 mb-1">Source</label>
+              <select x-model="crosswalkSrc" class="w-56">
+                <option value="">— select —</option>
+                <template x-for="fw in frameworks" :key="fw.id">
+                  <option :value="fw.id" x-text="fw.name+' '+fw.version"></option>
+                </template>
+              </select>
+            </div>
+            <div>
+              <label class="block text-xs font-medium text-gray-600 mb-1">Target</label>
+              <select x-model="crosswalkTgt" class="w-56">
+                <option value="">— select —</option>
+                <template x-for="fw in frameworks" :key="fw.id">
+                  <option :value="fw.id" x-text="fw.name+' '+fw.version"></option>
+                </template>
+              </select>
+            </div>
+            <button @click="loadCrosswalk()" class="btn btn-primary text-sm" :disabled="!crosswalkSrc||!crosswalkTgt">Compare</button>
+          </div>
+          <template x-if="crosswalkData">
+            <div class="space-y-4">
+              <template x-if="crosswalkData.explicit_mappings?.length">
+                <div>
+                  <h3 class="text-sm font-semibold text-gray-700 mb-2">Explicit Mappings (<span x-text="crosswalkData.explicit_mappings.length"></span>)</h3>
+                  <div class="overflow-x-auto">
+                    <table class="w-full">
+                      <thead><tr><th>Source Control</th><th>Type</th><th>Target Control</th><th>Notes</th></tr></thead>
+                      <tbody>
+                        <template x-for="m in crosswalkData.explicit_mappings" :key="m.id">
+                          <tr>
+                            <td class="text-xs"><span class="font-mono text-gray-500" x-text="m.source.control_id"></span> <span class="text-gray-700 ml-1" x-text="m.source.title"></span></td>
+                            <td><span class="badge bg-indigo-100 text-indigo-700" x-text="m.crosswalk_type||'mapped'"></span></td>
+                            <td class="text-xs"><span class="font-mono text-gray-500" x-text="m.target.control_id"></span> <span class="text-gray-700 ml-1" x-text="m.target.title"></span></td>
+                            <td class="text-xs text-gray-400" x-text="m.notes||'—'"></td>
+                          </tr>
+                        </template>
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </template>
+              <template x-if="crosswalkData.tag_overlaps?.length">
+                <div>
+                  <h3 class="text-sm font-semibold text-gray-700 mb-2">Tag-Based Overlaps (top <span x-text="Math.min(crosswalkData.tag_overlaps.length,20)"></span>)</h3>
+                  <div class="overflow-x-auto">
+                    <table class="w-full">
+                      <thead><tr><th>Source</th><th>Target</th><th>Shared Tags</th><th>Overlap</th></tr></thead>
+                      <tbody>
+                        <template x-for="(o,i) in crosswalkData.tag_overlaps.slice(0,20)" :key="i">
+                          <tr>
+                            <td class="text-xs text-gray-700" x-text="o.source_control_id+' '+o.source_title"></td>
+                            <td class="text-xs text-gray-700" x-text="o.target_control_id+' '+o.target_title"></td>
+                            <td class="text-xs"><div class="flex flex-wrap gap-1"><template x-for="tag in o.shared_tags" :key="tag"><span class="badge bg-gray-100 text-gray-600" x-text="tag"></span></template></div></td>
+                            <td><span class="font-semibold text-sm" :class="o.overlap_strength>=80?'text-green-600':o.overlap_strength>=40?'text-yellow-600':'text-gray-500'" x-text="o.overlap_strength+'%'"></span></td>
+                          </tr>
+                        </template>
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </template>
+              <template x-if="!crosswalkData.explicit_mappings?.length && !crosswalkData.tag_overlaps?.length">
+                <p class="text-sm text-gray-400">No crosswalk mappings or tag overlaps found between these frameworks.</p>
+              </template>
+            </div>
+          </template>
+        </div>
+      </template>
+    </div>
+
+    <!-- TOOLS -->
+    <div x-show="view==='tools'" class="p-6 space-y-6">
+      <div class="flex items-center justify-between">
+        <h1 class="text-2xl font-bold text-gray-900">Tools</h1>
+        <template x-if="role==='admin'">
+          <div class="flex items-center gap-2">
+            <button @click="openCreateTool()" class="btn btn-primary">+ Add Tool</button>
+            <button @click="openImportTools()" class="btn btn-ghost text-sm">↑ Import JSON</button>
+            <button @click="downloadToolTemplate()" class="btn btn-ghost text-sm">↓ Template</button>
+          </div>
+        </template>
+      </div>
+      <div class="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4">
+        <template x-if="!tools.length">
+          <div class="card text-gray-400 text-sm">No tools registered.</div>
+        </template>
+        <template x-for="t in tools" :key="t.id">
+          <div class="card">
+            <div class="flex items-start justify-between mb-2">
+              <div>
+                <p class="font-semibold text-gray-900" x-text="t.name"></p>
+                <span class="badge bg-indigo-100 text-indigo-700 mt-1" x-text="t.category||'general'"></span>
+              </div>
+              <template x-if="role==='admin'">
+                <button @click="confirmDelete('Remove tool '+t.name+'?',()=>deleteTool(t.id))" class="text-red-400 hover:text-red-600 text-xs">Remove</button>
+              </template>
+            </div>
+            <p class="text-sm text-gray-600 mb-2" x-text="t.description||''"></p>
+            <template x-if="t.capabilities?.length">
+              <div class="flex flex-wrap gap-1">
+                <template x-for="cap in t.capabilities" :key="cap">
+                  <span class="badge bg-gray-100 text-gray-600" x-text="cap"></span>
+                </template>
+              </div>
+            </template>
+          </div>
+        </template>
+      </div>
+    </div>
+
+    <!-- AUDIT LOG (global) -->
+    <div x-show="view==='auditlog'" class="p-6 space-y-6">
+      <div class="flex items-center justify-between">
+        <h1 class="text-2xl font-bold text-gray-900">Audit Log</h1>
+        <button @click="loadAuditLog()" class="btn btn-ghost text-xs">↻ Refresh</button>
+      </div>
+      <div class="card p-0 overflow-hidden">
+        <table class="w-full">
+          <thead><tr><th>Timestamp</th><th>User</th><th>Action</th><th>Resource</th><th>Details</th></tr></thead>
+          <tbody>
+            <template x-if="!auditLog.length">
+              <tr><td colspan="5" class="text-center text-gray-400 py-8">No log entries.</td></tr>
+            </template>
+            <template x-for="e in auditLog" :key="e.id">
+              <tr>
+                <td class="text-xs text-gray-500 whitespace-nowrap" x-text="fmtDt(e.timestamp)"></td>
+                <td class="text-xs text-gray-700" x-text="e.user_name||'system'"></td>
+                <td class="font-mono text-xs text-indigo-700" x-text="e.action"></td>
+                <td class="text-xs text-gray-500" x-text="(e.resource_type?e.resource_type+' #':'')+( e.resource_id||'—')"></td>
+                <td class="text-xs text-gray-500 max-w-sm truncate" x-text="fmtDetails(e.details)"></td>
+              </tr>
+            </template>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ADMIN -->
+    <div x-show="view==='admin'" class="p-6 space-y-8">
+      <h1 class="text-2xl font-bold text-gray-900">Administration</h1>
+      <div class="space-y-3">
+        <div class="flex items-center justify-between">
+          <h2 class="text-lg font-semibold text-gray-800">Users</h2>
+          <div class="flex items-center gap-2">
+            <button @click="openInviteUser()" class="btn btn-ghost text-sm">✉ Invite User</button>
+            <button @click="openCreateUser()" class="btn btn-primary text-sm">+ New User</button>
+          </div>
+        </div>
+        <div class="card p-0 overflow-hidden">
+          <table class="w-full">
+            <thead><tr><th>Username</th><th>Full Name</th><th>Email</th><th>Role</th><th>Active</th><th>MFA</th><th>Actions</th></tr></thead>
+            <tbody>
+              <template x-for="u in users" :key="u.id">
+                <tr>
+                  <td class="font-medium text-sm" x-text="u.username"></td>
+                  <td class="text-sm text-gray-600" x-text="u.full_name||'—'"></td>
+                  <td class="text-sm text-gray-600" x-text="u.email||'—'"></td>
+                  <td><span class="badge" :class="u.role==='admin'?'bg-yellow-100 text-yellow-700':u.role==='contributor'?'bg-green-100 text-green-700':'bg-gray-100 text-gray-600'" x-text="u.role"></span></td>
+                  <td><span class="badge" :class="u.is_active?'bg-green-100 text-green-700':'bg-red-100 text-red-700'" x-text="u.is_active?'Active':'Inactive'"></span></td>
+                  <td>
+                    <span class="badge" :class="u.mfa_enabled?'bg-indigo-100 text-indigo-700':'bg-gray-100 text-gray-500'" x-text="u.mfa_enabled?'On':'Off'"></span>
+                    <template x-if="u.mfa_enabled">
+                      <button @click="confirmDelete('Reset MFA for '+u.username+'?',()=>adminResetMFA(u.id))" class="ml-1 text-amber-600 hover:text-amber-800 text-xs font-medium">Reset</button>
+                    </template>
+                  </td>
+                  <td>
+                    <div class="flex items-center gap-2">
+                      <button @click="openEditUser(u)" class="btn btn-ghost text-xs py-1 px-2">Edit</button>
+                      <button @click="confirmDelete('Delete user '+u.username+'?',()=>deleteUser(u.id))" class="text-red-500 hover:text-red-700 text-xs font-medium">Delete</button>
+                    </div>
+                  </td>
+                </tr>
+              </template>
+            </tbody>
+          </table>
+        </div>
+      </div>
+      <div class="space-y-3">
+        <div class="flex items-center justify-between">
+          <h2 class="text-lg font-semibold text-gray-800">Imports</h2>
+        </div>
+        <div class="card">
+          <div class="flex items-center justify-between">
+            <div>
+              <p class="text-sm font-medium text-gray-800">CIS Controls XLSX</p>
+              <p class="text-xs text-gray-400 mt-0.5">Import CIS Controls from the official spreadsheet workbook. Existing controls are skipped.</p>
+            </div>
+            <button @click="openImportCis()" class="btn btn-ghost text-sm flex-shrink-0 ml-4">↑ Import XLSX</button>
+          </div>
+        </div>
+        <div class="card">
+          <div class="flex items-center justify-between">
+            <div>
+              <p class="text-sm font-medium text-gray-800">NIST CSF 2.0 XLSX</p>
+              <p class="text-xs text-gray-400 mt-0.5">Import NIST Cybersecurity Framework 2.0 categories and subcategories from the official NIST workbook. Existing categories are skipped.</p>
+            </div>
+            <button @click="openImportNistCsf()" class="btn btn-ghost text-sm flex-shrink-0 ml-4">↑ Import XLSX</button>
+          </div>
+        </div>
+      </div>
+      <!-- Security -->
+      <div class="space-y-3">
+        <h2 class="text-lg font-semibold text-gray-800">Security</h2>
+        <!-- MFA -->
+        <div class="card">
+          <div class="flex items-start justify-between">
+            <div>
+              <p class="text-sm font-medium text-gray-800">Two-Factor Authentication (TOTP)</p>
+              <p class="text-xs text-gray-400 mt-0.5">Protect your account with a time-based one-time password from an authenticator app.</p>
+              <template x-if="user?.mfa_enabled">
+                <p class="text-xs text-green-600 font-medium mt-1">✓ MFA is enabled on your account</p>
+              </template>
+              <template x-if="!user?.mfa_enabled">
+                <p class="text-xs text-amber-600 font-medium mt-1">MFA is not enabled — your account uses password only</p>
+              </template>
+            </div>
+            <div class="flex-shrink-0 ml-4">
+              <template x-if="!user?.mfa_enabled">
+                <button @click="openMFASetup()" class="btn btn-primary text-sm">Enable MFA</button>
+              </template>
+              <template x-if="user?.mfa_enabled">
+                <button @click="modal='disableMFA'; f={}" class="btn btn-ghost text-sm text-red-600 hover:text-red-700">Disable MFA</button>
+              </template>
+            </div>
+          </div>
+        </div>
+        <!-- SSO / OIDC -->
+        <div class="card space-y-3">
+          <!-- Header row -->
+          <div class="flex items-start justify-between">
+            <div>
+              <p class="text-sm font-medium text-gray-800">Single Sign-On (OIDC)</p>
+              <p class="text-xs text-gray-400 mt-0.5">OpenID Connect federation with your identity provider (Okta, Azure AD, Google Workspace, etc.).</p>
+              <template x-if="oidcConfigured">
+                <p class="text-xs text-green-600 font-medium mt-1">✓ SSO is configured and active
+                  <span x-show="oidcSource==='db'" class="text-gray-400 font-normal"> (saved in database)</span>
+                  <span x-show="oidcSource==='env'" class="text-gray-400 font-normal"> (from environment)</span>
+                </p>
+              </template>
+              <template x-if="!oidcConfigured">
+                <p class="text-xs text-gray-500 mt-1">Not configured — use the form below or set
+                  <code class="bg-gray-100 px-1 rounded text-xs">CAAMS_OIDC_ISSUER</code>,
+                  <code class="bg-gray-100 px-1 rounded text-xs">CAAMS_OIDC_CLIENT_ID</code>, and
+                  <code class="bg-gray-100 px-1 rounded text-xs">CAAMS_OIDC_CLIENT_SECRET</code> env vars.</p>
+              </template>
+            </div>
+            <div class="flex items-center gap-2 flex-shrink-0 ml-4">
+              <template x-if="oidcConfigured">
+                <span class="badge bg-green-100 text-green-700">Active</span>
+              </template>
+              <button @click="oidcEditMode ? oidcEditMode=false : openOidcEdit()"
+                      class="btn btn-ghost text-xs"
+                      x-text="oidcEditMode ? 'Cancel' : (oidcConfigured ? 'Edit' : 'Configure')">
+              </button>
+            </div>
+          </div>
+
+          <!-- Current settings summary (shown when not editing) -->
+          <template x-if="oidcConfigured && !oidcEditMode">
+            <dl class="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1.5 text-xs border-t border-gray-100 pt-3">
+              <dt class="text-gray-400 font-medium self-center">Issuer</dt>
+              <dd class="font-mono text-gray-700 break-all" x-text="oidcIssuer"></dd>
+              <dt class="text-gray-400 font-medium self-center">Client ID</dt>
+              <dd class="font-mono text-gray-700 break-all" x-text="oidcClientId"></dd>
+              <dt class="text-gray-400 font-medium self-center">Default role</dt>
+              <dd class="font-mono text-gray-700" x-text="oidcDefaultRole"></dd>
+            </dl>
+          </template>
+
+          <!-- Edit / Configure form -->
+          <template x-if="oidcEditMode">
+            <div class="border-t border-gray-100 pt-3 space-y-3">
+              <div>
+                <label class="block text-xs text-gray-500 mb-1">Issuer URL</label>
+                <input type="url" x-model="oidcForm.issuer" placeholder="https://accounts.google.com" class="input text-sm w-full" required />
+              </div>
+              <div class="grid grid-cols-2 gap-3">
+                <div>
+                  <label class="block text-xs text-gray-500 mb-1">Client ID</label>
+                  <input type="text" x-model="oidcForm.client_id" placeholder="your-client-id" class="input text-sm w-full" autocomplete="off" required />
+                </div>
+                <div>
+                  <label class="block text-xs text-gray-500 mb-1">Client Secret
+                    <span x-show="oidcHasSecret && oidcSource==='db'" class="font-normal text-gray-400"> (saved — leave blank to keep)</span>
+                  </label>
+                  <input type="password" x-model="oidcForm.client_secret"
+                         :placeholder="oidcHasSecret && oidcSource==='db' ? '••••••••' : 'Enter client secret'"
+                         class="input text-sm w-full" autocomplete="new-password" />
+                </div>
+              </div>
+              <div>
+                <label class="block text-xs text-gray-500 mb-1">Default role for auto-provisioned users</label>
+                <select x-model="oidcForm.default_role" class="input text-sm w-full">
+                  <option value="viewer">Viewer</option>
+                  <option value="contributor">Contributor</option>
+                  <option value="auditor">Auditor</option>
+                  <option value="admin">Admin</option>
+                </select>
+              </div>
+              <div class="flex items-center gap-3 pt-1">
+                <button @click="saveOidcConfig()" :disabled="oidcSaving || !oidcForm.issuer || !oidcForm.client_id"
+                        class="btn btn-primary text-sm" x-text="oidcSaving ? 'Saving…' : 'Save'"></button>
+                <template x-if="oidcSource==='db'">
+                  <button @click="clearOidcConfig()" class="btn btn-ghost text-sm text-red-600 hover:text-red-700">
+                    Clear / use environment variables
+                  </button>
+                </template>
+              </div>
+            </div>
+          </template>
+
+          <!-- Callback URL — always shown so admins know what to register with their IdP -->
+          <div class="border-t border-gray-100 pt-3 space-y-2">
+            <p class="text-xs text-gray-400 font-medium">Redirect / Callback URL <span class="font-normal">(register this with your IdP)</span></p>
+            <code class="block bg-gray-50 border border-gray-200 rounded px-3 py-2 text-xs font-mono break-all text-gray-800"
+                  x-text="oidcCallbackUrl || (window.location.origin + '/auth/oidc/callback')"></code>
+          </div>
+
+          <!-- Test connection (shown when configured and not editing) -->
+          <template x-if="oidcConfigured && !oidcEditMode">
+            <div class="border-t border-gray-100 pt-3 flex items-center gap-3">
+              <p class="text-xs text-gray-500 flex-1">Verify the IdP discovery document is reachable.</p>
+              <button @click="testOidcConfig()" class="btn btn-ghost text-sm flex-shrink-0">Test Connection</button>
+            </div>
+          </template>
+        </div>
+        <!-- SMTP / Email -->
+        <div class="card space-y-3">
+          <!-- Header row -->
+          <div class="flex items-start justify-between">
+            <div>
+              <p class="text-sm font-medium text-gray-800">Email (SMTP)</p>
+              <p class="text-xs text-gray-400 mt-0.5">Used for sending user invite emails.</p>
+              <template x-if="smtpConfigured">
+                <p class="text-xs text-green-600 font-medium mt-1">✓ SMTP is configured
+                  <span x-show="smtpSource==='db'" class="text-gray-400 font-normal"> (saved in database)</span>
+                  <span x-show="smtpSource==='env'" class="text-gray-400 font-normal"> (from environment)</span>
+                </p>
+              </template>
+              <template x-if="!smtpConfigured">
+                <p class="text-xs text-gray-500 mt-1">Not configured — use the form below or set
+                  <code class="bg-gray-100 px-1 rounded text-xs">CAAMS_SMTP_HOST</code> +
+                  <code class="bg-gray-100 px-1 rounded text-xs">CAAMS_SMTP_FROM</code> env vars.</p>
+              </template>
+            </div>
+            <div class="flex items-center gap-2 flex-shrink-0 ml-4">
+              <template x-if="smtpConfigured">
+                <span class="badge bg-green-100 text-green-700">Active</span>
+              </template>
+              <button @click="smtpEditMode ? smtpEditMode=false : openSmtpEdit()"
+                      class="btn btn-ghost text-xs"
+                      x-text="smtpEditMode ? 'Cancel' : (smtpConfigured ? 'Edit' : 'Configure')">
+              </button>
+            </div>
+          </div>
+
+          <!-- Current settings summary (shown when not editing) -->
+          <template x-if="smtpConfigured && !smtpEditMode">
+            <dl class="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1.5 text-xs border-t border-gray-100 pt-3">
+              <dt class="text-gray-400 font-medium self-center">Host</dt>
+              <dd class="font-mono text-gray-700" x-text="smtpHost + ':' + smtpPort"></dd>
+              <dt class="text-gray-400 font-medium self-center">From</dt>
+              <dd class="font-mono text-gray-700 break-all" x-text="smtpFrom"></dd>
+              <dt class="text-gray-400 font-medium self-center">Auth</dt>
+              <dd class="font-mono text-gray-700" x-text="smtpUser || '(anonymous relay)'"></dd>
+              <dt class="text-gray-400 font-medium self-center">TLS</dt>
+              <dd class="font-mono text-gray-700" x-text="smtpTls ? 'STARTTLS' : 'Plain'"></dd>
+            </dl>
+          </template>
+
+          <!-- Edit / Configure form -->
+          <template x-if="smtpEditMode">
+            <div class="border-t border-gray-100 pt-3 space-y-3">
+              <div class="grid grid-cols-[1fr_auto] gap-3">
+                <div>
+                  <label class="block text-xs text-gray-500 mb-1">SMTP Host</label>
+                  <input type="text" x-model="smtpForm.host" placeholder="smtp.example.com" class="input text-sm w-full" required />
+                </div>
+                <div style="width:90px">
+                  <label class="block text-xs text-gray-500 mb-1">Port</label>
+                  <input type="number" x-model.number="smtpForm.port" min="1" max="65535" class="input text-sm w-full" />
+                </div>
+              </div>
+              <div>
+                <label class="block text-xs text-gray-500 mb-1">From Address</label>
+                <input type="email" x-model="smtpForm.from_addr" placeholder="caams@yourdomain.com" class="input text-sm w-full" required />
+              </div>
+              <div class="grid grid-cols-2 gap-3">
+                <div>
+                  <label class="block text-xs text-gray-500 mb-1">Username <span class="font-normal">(optional)</span></label>
+                  <input type="text" x-model="smtpForm.user" placeholder="Leave blank for relay" class="input text-sm w-full" autocomplete="off" />
+                </div>
+                <div>
+                  <label class="block text-xs text-gray-500 mb-1">Password
+                    <span x-show="smtpHasPassword && smtpSource==='db'" class="font-normal text-gray-400"> (saved — leave blank to keep)</span>
+                  </label>
+                  <input type="password" x-model="smtpForm.password"
+                         :placeholder="smtpHasPassword && smtpSource==='db' ? '••••••••' : 'Leave blank for none'"
+                         class="input text-sm w-full" autocomplete="new-password" />
+                </div>
+              </div>
+              <div class="flex items-center gap-2">
+                <input type="checkbox" id="smtpTlsCheck" x-model="smtpForm.use_tls" class="rounded" />
+                <label for="smtpTlsCheck" class="text-xs text-gray-700">Use STARTTLS (recommended)</label>
+              </div>
+              <div class="flex items-center gap-3 pt-1">
+                <button @click="saveSmtpConfig()" :disabled="smtpSaving || !smtpForm.host || !smtpForm.from_addr"
+                        class="btn btn-primary text-sm" x-text="smtpSaving ? 'Saving…' : 'Save'"></button>
+                <template x-if="smtpSource==='db'">
+                  <button @click="clearSmtpConfig()" class="btn btn-ghost text-sm text-red-600 hover:text-red-700">
+                    Clear / use environment variables
+                  </button>
+                </template>
+              </div>
+            </div>
+          </template>
+
+          <!-- Test email row (shown when configured and not editing) -->
+          <template x-if="smtpConfigured && !smtpEditMode">
+            <div class="border-t border-gray-100 pt-3 flex items-center gap-3">
+              <input type="email" x-model="smtpTestAddress" placeholder="test@example.com" class="input text-sm flex-1" />
+              <button @click="sendSmtpTest()" :disabled="!smtpTestAddress" class="btn btn-ghost text-sm flex-shrink-0">Send Test Email</button>
+            </div>
+          </template>
+        </div>
+      </div>
+      <!-- Backups -->
+      <div class="space-y-3">
+        <div class="flex items-center justify-between">
+          <h2 class="text-lg font-semibold text-gray-800">Database Backups</h2>
+          <button @click="loadBackups()" class="btn btn-ghost text-xs">↻ Refresh</button>
+        </div>
+        <template x-if="!backupsConfigured">
+          <div class="card text-sm text-gray-500">
+            <p class="font-medium text-gray-700 mb-1">Backup service not configured</p>
+            <p class="text-xs">To enable automated daily backups, start the <code class="bg-gray-100 px-1 rounded">pg_backup</code> Docker service and mount the backup volume. See <code class="bg-gray-100 px-1 rounded">docker-compose.yml</code> for details.</p>
+          </div>
+        </template>
+        <template x-if="backupsConfigured">
+          <div class="card p-0 overflow-hidden">
+            <template x-if="!backups.length">
+              <div class="px-4 py-8 text-center text-gray-400 text-sm">No backup files found yet.</div>
+            </template>
+            <table class="w-full" x-show="backups.length">
+              <thead><tr><th>File</th><th>Size</th><th>Created</th><th></th></tr></thead>
+              <tbody>
+                <template x-for="b in backups" :key="b.name">
+                  <tr>
+                    <td class="font-mono text-xs text-gray-700" x-text="b.name"></td>
+                    <td class="text-xs text-gray-500" x-text="b.size_mb+' MB'"></td>
+                    <td class="text-xs text-gray-500" x-text="b.created"></td>
+                    <td class="text-right pr-2">
+                      <button @click="downloadBackup(b.name)" class="btn btn-ghost text-xs py-1 px-2" title="Download backup file">↓ Download</button>
+                    </td>
+                  </tr>
+                </template>
+              </tbody>
+            </table>
+          </div>
+        </template>
+      </div>
+      <div class="space-y-3">
+        <div class="flex items-center justify-between">
+          <h2 class="text-lg font-semibold text-gray-800">API Tokens</h2>
+          <button @click="openCreateToken()" class="btn btn-primary text-sm">+ New Token</button>
+        </div>
+        <template x-if="newToken">
+          <div class="bg-green-50 border border-green-200 rounded-lg p-4 text-sm">
+            <p class="font-semibold text-green-800 mb-1">✓ Token created — copy it now:</p>
+            <code class="block bg-white border border-green-200 rounded px-3 py-2 text-xs font-mono break-all" x-text="newToken"></code>
+          </div>
+        </template>
+        <div class="card p-0 overflow-hidden">
+          <table class="w-full">
+            <thead><tr><th>Name</th><th>Created</th><th>Expires</th><th>Last Used</th><th></th></tr></thead>
+            <tbody>
+              <template x-if="!apiTokens.length">
+                <tr><td colspan="5" class="text-center text-gray-400 py-8">No API tokens.</td></tr>
+              </template>
+              <template x-for="t in apiTokens" :key="t.id">
+                <tr>
+                  <td class="font-medium text-sm" x-text="t.name"></td>
+                  <td class="text-xs text-gray-500" x-text="fmt(t.created_at)"></td>
+                  <td class="text-xs text-gray-500" x-text="fmt(t.expires_at)"></td>
+                  <td class="text-xs text-gray-500" x-text="fmtDt(t.last_used_at)"></td>
+                  <td><button @click="confirmDelete('Revoke token '+t.name+'?',()=>deleteApiToken(t.id))" class="text-red-500 hover:text-red-700 text-xs font-medium">Revoke</button></td>
+                </tr>
+              </template>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+  </main>
+</div><!-- /app shell -->
+
+<!-- MODALS -->
+<template x-if="modal">
+  <div class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40" @click.self="modal=null">
+    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
+
+      <!-- Create Assessment -->
+      <template x-if="modal==='createAssessment'">
+        <div class="p-6 space-y-4">
+          <h2 class="text-lg font-semibold">New Assessment</h2>
+          <div><label class="block text-sm font-medium text-gray-700 mb-1">Name</label>
+            <input type="text" x-model="f.name" placeholder="Q1 2025 SOC 2" /></div>
+          <div><label class="block text-sm font-medium text-gray-700 mb-1">Framework</label>
+            <select x-model="f.framework_id">
+              <template x-for="fw in frameworks" :key="fw.id">
+                <option :value="fw.id" x-text="fw.name+' '+fw.version"></option>
+              </template>
+            </select></div>
+          <div><label class="block text-sm font-medium text-gray-700 mb-1">Scope Notes</label>
+            <textarea x-model="f.scope_notes" rows="3"></textarea></div>
+          <label class="flex items-center gap-2 text-sm"><input type="checkbox" x-model="f.is_recurring" class="w-4 h-4" /> Recurring</label>
+          <template x-if="f.is_recurring">
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Repeat every</label>
+              <div class="flex items-center gap-2">
+                <input type="number" x-model="f.recurrence_interval" min="1" class="w-20" />
+                <select x-model="f.recurrence_unit" class="flex-1">
+                  <option value="days">Days</option>
+                  <option value="weeks">Weeks</option>
+                  <option value="months">Months</option>
+                  <option value="quarters">Quarters (~91 days)</option>
+                  <option value="years">Years</option>
+                </select>
+              </div>
+            </div>
+          </template>
+          <div class="flex justify-end gap-3 pt-2">
+            <button @click="modal=null" class="btn btn-ghost">Cancel</button>
+            <button @click="createAssessment()" class="btn btn-primary">Create</button>
+          </div>
+        </div>
+      </template>
+
+      <!-- Lifecycle -->
+      <template x-if="modal==='lifecycle'">
+        <div class="p-6 space-y-4">
+          <h2 class="text-lg font-semibold" x-text="f.action?.replace(/_/g,' ').replace(/\w/g,c=>c.toUpperCase())"></h2>
+          <div><label class="block text-sm font-medium text-gray-700 mb-1">Comments</label>
+            <textarea x-model="f.comments" rows="3" placeholder="Optional comments…"></textarea></div>
+          <div class="flex justify-end gap-3 pt-2">
+            <button @click="modal=null" class="btn btn-ghost">Cancel</button>
+            <button @click="submitLifecycle()" class="btn btn-primary">Submit</button>
+          </div>
+        </div>
+      </template>
+
+      <!-- Control Edit -->
+      <template x-if="modal==='control'">
+        <div class="p-6 space-y-5">
+
+          <!-- Header -->
+          <div>
+            <span class="font-mono text-xs bg-indigo-50 text-indigo-700 px-2 py-0.5 rounded" x-text="f.control_id"></span>
+            <h2 class="text-lg font-semibold text-gray-900 mt-1.5" x-text="f._ctrl?.title||f.control_id"></h2>
+            <p class="text-sm text-gray-500 mt-1 leading-snug" x-show="f._ctrl?.description" x-text="f._ctrl?.description"></p>
+          </div>
+
+          <!-- ── Assignment & Scheduling ──────────────────────────────── -->
+          <div class="border-t border-gray-200 pt-4">
+            <p class="text-[11px] font-semibold text-gray-400 uppercase tracking-widest mb-3">Assignment &amp; Scheduling</p>
+            <div class="grid grid-cols-2 gap-3 mb-3">
+              <div><label class="block text-sm font-medium text-gray-700 mb-1">Assignee</label>
+                <select x-model="f.assignee">
+                  <option value="">— Unassigned —</option>
+                  <template x-for="u in userDirectory" :key="u.username">
+                    <option :value="u.full_name||u.username" x-text="u.full_name?u.full_name+' ('+u.username+')':u.username"></option>
+                  </template>
+                </select></div>
+              <div><label class="block text-sm font-medium text-gray-700 mb-1">Due Date</label>
+                <input type="date" x-model="f.due_date" /></div>
+            </div>
+            <div class="grid grid-cols-3 gap-3">
+              <div><label class="block text-sm font-medium text-gray-700 mb-1">Owner</label>
+                <select x-model="f.owner">
+                  <option value="">— None —</option>
+                  <template x-for="u in userDirectory" :key="u.username">
+                    <option :value="u.full_name||u.username" x-text="u.full_name?u.full_name+' ('+u.username+')':u.username"></option>
+                  </template>
+                </select></div>
+              <div><label class="block text-sm font-medium text-gray-700 mb-1">Team</label>
+                <select x-model="f.team">
+                  <option value="">— None —</option>
+                  <template x-for="u in userDirectory" :key="u.username">
+                    <option :value="u.full_name||u.username" x-text="u.full_name?u.full_name+' ('+u.username+')':u.username"></option>
+                  </template>
+                </select></div>
+              <div><label class="block text-sm font-medium text-gray-700 mb-1">Evidence Owner</label>
+                <select x-model="f.evidence_owner">
+                  <option value="">— None —</option>
+                  <template x-for="u in userDirectory" :key="u.username">
+                    <option :value="u.full_name||u.username" x-text="u.full_name?u.full_name+' ('+u.username+')':u.username"></option>
+                  </template>
+                </select></div>
+            </div>
+          </div>
+
+          <!-- ── Notes & Evidence ────────────────────────────────────── -->
+          <div class="border-t border-gray-200 pt-4">
+            <p class="text-[11px] font-semibold text-gray-400 uppercase tracking-widest mb-3">Notes &amp; Evidence</p>
+            <div class="space-y-3">
+              <div><label class="block text-sm font-medium text-gray-700 mb-1">Notes</label>
+                <textarea x-model="f.notes" rows="3"></textarea></div>
+              <div><label class="block text-sm font-medium text-gray-700 mb-1">Evidence URL</label>
+                <input type="url" x-model="f.evidence_url" /></div>
+              <div class="border border-dashed border-gray-300 rounded-lg p-3 space-y-2">
+                <p class="text-xs font-semibold text-gray-500 uppercase tracking-wide">Attach File</p>
+                <input type="file" id="ctrlEvidenceFile" class="w-full text-sm" />
+                <div class="grid grid-cols-2 gap-2">
+                  <div><label class="block text-xs text-gray-600 mb-0.5">Description</label>
+                    <input type="text" x-model="f.evidenceDescription" placeholder="Optional" class="text-sm" /></div>
+                  <div><label class="block text-xs text-gray-600 mb-0.5">Expires</label>
+                    <input type="date" x-model="f.evidenceExpires" class="text-sm" /></div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- ── Status & Override ───────────────────────────────────── -->
+          <div class="border-t border-gray-200 pt-4">
+            <p class="text-[11px] font-semibold text-gray-400 uppercase tracking-widest mb-3">Status &amp; Override</p>
+            <label class="flex items-center gap-2 text-sm mb-3"><input type="checkbox" x-model="f.is_applicable" class="w-4 h-4" /> Applicable</label>
+            <template x-if="!f.is_applicable">
+              <div class="mb-3"><label class="block text-sm font-medium text-gray-700 mb-1">Exclusion Reason</label>
+                <input type="text" x-model="f.exclusion_reason" /></div>
+            </template>
+            <div class="grid grid-cols-2 gap-3">
+              <div><label class="block text-sm font-medium text-gray-700 mb-1">Override Status</label>
+                <select x-model="f.override_status">
+                  <option value="">Auto</option>
+                  <option value="covered">Covered</option>
+                  <option value="partial">Partial</option>
+                  <option value="not_covered">Not Covered</option>
+                  <option value="not_applicable">N/A</option>
+                </select></div>
+              <div><label class="block text-sm font-medium text-gray-700 mb-1">Justification</label>
+                <input type="text" x-model="f.override_justification" /></div>
+            </div>
+          </div>
+
+          <!-- ── Review ──────────────────────────────────────────────── -->
+          <div class="border-t border-gray-200 pt-4">
+            <p class="text-[11px] font-semibold text-gray-400 uppercase tracking-widest mb-3">Review</p>
+            <div class="grid grid-cols-2 gap-3">
+              <div><label class="block text-sm font-medium text-gray-700 mb-1">Review Status</label>
+                <select x-model="f.review_status">
+                  <option value="not_reviewed">Not Reviewed</option>
+                  <option value="in_review">In Review</option>
+                  <option value="approved">Approved</option>
+                  <option value="rejected">Rejected</option>
+                </select></div>
+              <div><label class="block text-sm font-medium text-gray-700 mb-1">Review Notes</label>
+                <input type="text" x-model="f.review_notes" placeholder="Optional notes" /></div>
+            </div>
+          </div>
+
+          <!-- Actions -->
+          <div class="flex justify-end gap-3 pt-1">
+            <button @click="modal=null" class="btn btn-ghost">Cancel</button>
+            <button @click="saveControl()" class="btn btn-primary">Save</button>
+          </div>
+        </div>
+      </template>
+
+      <!-- Evidence Upload -->
+      <template x-if="modal==='evidence'">
+        <div class="p-6 space-y-4">
+          <h2 class="text-lg font-semibold">Upload Evidence</h2>
+          <div><label class="block text-sm font-medium text-gray-700 mb-1">File</label>
+            <input type="file" id="evidenceFile" class="w-full text-sm" /></div>
+          <div><label class="block text-sm font-medium text-gray-700 mb-1">Control ID (optional)</label>
+            <input type="text" x-model="f.control_id" placeholder="e.g. CC6.1" /></div>
+          <div><label class="block text-sm font-medium text-gray-700 mb-1">Description</label>
+            <input type="text" x-model="f.description" /></div>
+          <div><label class="block text-sm font-medium text-gray-700 mb-1">Expires (optional)</label>
+            <input type="date" x-model="f.expires_at" /></div>
+          <div class="flex justify-end gap-3 pt-2">
+            <button @click="modal=null" class="btn btn-ghost">Cancel</button>
+            <button @click="uploadEvidence()" class="btn btn-primary">Upload</button>
+          </div>
+        </div>
+      </template>
+
+      <!-- Evidence Reject -->
+      <template x-if="modal==='evidenceReject'">
+        <div class="p-6 space-y-4">
+          <h2 class="text-lg font-semibold">Reject Evidence</h2>
+          <div><label class="block text-sm font-medium text-gray-700 mb-1">Reason</label>
+            <textarea x-model="f.rejection_reason" rows="3"></textarea></div>
+          <div class="flex justify-end gap-3 pt-2">
+            <button @click="modal=null" class="btn btn-ghost">Cancel</button>
+            <button @click="submitRejectEvidence()" class="btn btn-red">Reject</button>
+          </div>
+        </div>
+      </template>
+
+      <!-- Create Finding -->
+      <template x-if="modal==='finding'">
+        <div class="p-6 space-y-4">
+          <h2 class="text-lg font-semibold">New Finding</h2>
+          <div><label class="block text-sm font-medium text-gray-700 mb-1">Title</label>
+            <input type="text" x-model="f.title" /></div>
+          <div><label class="block text-sm font-medium text-gray-700 mb-1">Control ID</label>
+            <input type="text" x-model="f.control_id" /></div>
+          <div><label class="block text-sm font-medium text-gray-700 mb-1">Description</label>
+            <textarea x-model="f.description" rows="3"></textarea></div>
+          <div class="grid grid-cols-2 gap-3">
+            <div><label class="block text-sm font-medium text-gray-700 mb-1">Severity</label>
+              <select x-model="f.severity">
+                <option value="critical">Critical</option><option value="high">High</option>
+                <option value="medium">Medium</option><option value="low">Low</option>
+                <option value="informational">Informational</option>
+              </select></div>
+            <div><label class="block text-sm font-medium text-gray-700 mb-1">Remediation Owner</label>
+              <select x-model="f.remediation_owner">
+                <option value="">— None —</option>
+                <template x-for="u in userDirectory" :key="u.username">
+                  <option :value="u.full_name||u.username" x-text="u.full_name?u.full_name+' ('+u.username+')':u.username"></option>
+                </template>
+              </select></div>
+          </div>
+          <div><label class="block text-sm font-medium text-gray-700 mb-1">Target Date</label>
+            <input type="date" x-model="f.target_date" /></div>
+          <div><label class="block text-sm font-medium text-gray-700 mb-1">Notes</label>
+            <textarea x-model="f.notes" rows="2"></textarea></div>
+          <div class="flex justify-end gap-3 pt-2">
+            <button @click="modal=null" class="btn btn-ghost">Cancel</button>
+            <button @click="createFinding()" class="btn btn-primary">Create</button>
+          </div>
+        </div>
+      </template>
+
+      <!-- Edit Finding -->
+      <template x-if="modal==='editFinding'">
+        <div class="p-6 space-y-4">
+          <h2 class="text-lg font-semibold">Edit Finding</h2>
+          <div><label class="block text-sm font-medium text-gray-700 mb-1">Title</label>
+            <input type="text" x-model="f.title" /></div>
+          <div><label class="block text-sm font-medium text-gray-700 mb-1">Description</label>
+            <textarea x-model="f.description" rows="3"></textarea></div>
+          <div class="grid grid-cols-2 gap-3">
+            <div><label class="block text-sm font-medium text-gray-700 mb-1">Severity</label>
+              <select x-model="f.severity">
+                <option value="critical">Critical</option><option value="high">High</option>
+                <option value="medium">Medium</option><option value="low">Low</option>
+                <option value="informational">Informational</option>
+              </select></div>
+            <div><label class="block text-sm font-medium text-gray-700 mb-1">Status</label>
+              <select x-model="f.status">
+                <option value="open">Open</option><option value="in_progress">In Progress</option>
+                <option value="remediated">Remediated</option><option value="accepted">Accepted</option>
+                <option value="closed">Closed</option>
+              </select></div>
+          </div>
+          <div><label class="block text-sm font-medium text-gray-700 mb-1">Remediation Owner</label>
+            <select x-model="f.remediation_owner">
+              <option value="">— None —</option>
+              <template x-for="u in userDirectory" :key="u.username">
+                <option :value="u.full_name||u.username" x-text="u.full_name?u.full_name+' ('+u.username+')':u.username"></option>
+              </template>
+            </select></div>
+          <div><label class="block text-sm font-medium text-gray-700 mb-1">Target Date</label>
+            <input type="date" x-model="f.target_date" /></div>
+          <div><label class="block text-sm font-medium text-gray-700 mb-1">Notes</label>
+            <textarea x-model="f.notes" rows="2"></textarea></div>
+          <div class="flex justify-end gap-3 pt-2">
+            <button @click="modal=null" class="btn btn-ghost">Cancel</button>
+            <button @click="updateFinding()" class="btn btn-primary">Save</button>
+          </div>
+        </div>
+      </template>
+
+      <!-- Create RFI -->
+      <template x-if="modal==='rfi'">
+        <div class="p-6 space-y-4">
+          <h2 class="text-lg font-semibold">New RFI</h2>
+          <div><label class="block text-sm font-medium text-gray-700 mb-1">Title</label>
+            <input type="text" x-model="f.title" /></div>
+          <div><label class="block text-sm font-medium text-gray-700 mb-1">Description</label>
+            <textarea x-model="f.description" rows="3"></textarea></div>
+          <div class="grid grid-cols-2 gap-3">
+            <div><label class="block text-sm font-medium text-gray-700 mb-1">Priority</label>
+              <select x-model="f.priority">
+                <option value="low">Low</option><option value="medium">Medium</option>
+                <option value="high">High</option><option value="critical">Critical</option>
+              </select></div>
+            <div><label class="block text-sm font-medium text-gray-700 mb-1">Control ID</label>
+              <input type="text" x-model="f.control_id" /></div>
+          </div>
+          <div class="grid grid-cols-2 gap-3">
+            <div><label class="block text-sm font-medium text-gray-700 mb-1">Requested By</label>
+              <input type="text" x-model="f.requested_by" /></div>
+            <div><label class="block text-sm font-medium text-gray-700 mb-1">Assigned To</label>
+              <select x-model="f.assigned_to">
+                <option value="">— Unassigned —</option>
+                <template x-for="u in userDirectory" :key="u.username">
+                  <option :value="u.username" x-text="u.full_name?u.full_name+' ('+u.username+')':u.username"></option>
+                </template>
+              </select></div>
+          </div>
+          <div><label class="block text-sm font-medium text-gray-700 mb-1">Due Date</label>
+            <input type="date" x-model="f.due_date" /></div>
+          <div class="flex justify-end gap-3 pt-2">
+            <button @click="modal=null" class="btn btn-ghost">Cancel</button>
+            <button @click="createRFI()" class="btn btn-primary">Create</button>
+          </div>
+        </div>
+      </template>
+
+      <!-- RFI Respond -->
+      <template x-if="modal==='rfiRespond'">
+        <div class="p-6 space-y-4">
+          <h2 class="text-lg font-semibold">Respond to RFI</h2>
+          <p class="text-sm text-gray-600 font-medium" x-text="f._rfi?.title"></p>
+          <div><label class="block text-sm font-medium text-gray-700 mb-1">Your Name</label>
+            <input type="text" x-model="f.responder_name" /></div>
+          <div><label class="block text-sm font-medium text-gray-700 mb-1">Response</label>
+            <textarea x-model="f.response_text" rows="4"></textarea></div>
+          <div class="flex justify-end gap-3 pt-2">
+            <button @click="modal=null" class="btn btn-ghost">Cancel</button>
+            <button @click="submitRFIResponse()" class="btn btn-primary">Submit</button>
+          </div>
+        </div>
+      </template>
+
+      <!-- Create User -->
+      <template x-if="modal==='createUser'">
+        <div class="p-6 space-y-4">
+          <h2 class="text-lg font-semibold">New User</h2>
+          <div class="grid grid-cols-2 gap-3">
+            <div><label class="block text-sm font-medium text-gray-700 mb-1">Username</label>
+              <input type="text" x-model="f.username" /></div>
+            <div><label class="block text-sm font-medium text-gray-700 mb-1">Password</label>
+              <input type="password" x-model="f.password" /></div>
+          </div>
+          <div class="grid grid-cols-2 gap-3">
+            <div><label class="block text-sm font-medium text-gray-700 mb-1">Full Name</label>
+              <input type="text" x-model="f.full_name" /></div>
+            <div><label class="block text-sm font-medium text-gray-700 mb-1">Email</label>
+              <input type="email" x-model="f.email" /></div>
+          </div>
+          <div><label class="block text-sm font-medium text-gray-700 mb-1">Role</label>
+            <select x-model="f.role">
+              <option value="viewer">Viewer</option>
+              <option value="contributor">Contributor</option>
+              <option value="admin">Admin</option>
+            </select></div>
+          <div class="flex justify-end gap-3 pt-2">
+            <button @click="modal=null" class="btn btn-ghost">Cancel</button>
+            <button @click="createUser()" class="btn btn-primary">Create</button>
+          </div>
+        </div>
+      </template>
+
+      <!-- Edit User -->
+      <template x-if="modal==='editUser'">
+        <div class="p-6 space-y-4">
+          <h2 class="text-lg font-semibold">Edit User</h2>
+          <div class="grid grid-cols-2 gap-3">
+            <div><label class="block text-sm font-medium text-gray-700 mb-1">Full Name</label>
+              <input type="text" x-model="f.full_name" /></div>
+            <div><label class="block text-sm font-medium text-gray-700 mb-1">Email</label>
+              <input type="email" x-model="f.email" /></div>
+          </div>
+          <div class="grid grid-cols-2 gap-3">
+            <div><label class="block text-sm font-medium text-gray-700 mb-1">Role</label>
+              <select x-model="f.role">
+                <option value="viewer">Viewer</option>
+                <option value="contributor">Contributor</option>
+                <option value="admin">Admin</option>
+              </select></div>
+            <div><label class="block text-sm font-medium text-gray-700 mb-1">New Password</label>
+              <input type="password" x-model="f.password" placeholder="Leave blank to keep" /></div>
+          </div>
+          <label class="flex items-center gap-2 text-sm"><input type="checkbox" x-model="f.is_active" class="w-4 h-4" /> Active</label>
+          <div class="flex justify-end gap-3 pt-2">
+            <button @click="modal=null" class="btn btn-ghost">Cancel</button>
+            <button @click="updateUser()" class="btn btn-primary">Save</button>
+          </div>
+        </div>
+      </template>
+
+      <!-- Create API Token -->
+      <template x-if="modal==='createToken'">
+        <div class="p-6 space-y-4">
+          <h2 class="text-lg font-semibold">New API Token</h2>
+          <div><label class="block text-sm font-medium text-gray-700 mb-1">Name</label>
+            <input type="text" x-model="f.name" placeholder="e.g. CI Pipeline" /></div>
+          <div><label class="block text-sm font-medium text-gray-700 mb-1">Expires (optional)</label>
+            <input type="date" x-model="f.expires_at" /></div>
+          <div class="flex justify-end gap-3 pt-2">
+            <button @click="modal=null" class="btn btn-ghost">Cancel</button>
+            <button @click="createApiToken()" class="btn btn-primary">Generate</button>
+          </div>
+        </div>
+      </template>
+
+      <!-- Add Tool -->
+      <template x-if="modal==='tool'">
+        <div class="p-6 space-y-4">
+          <h2 class="text-lg font-semibold">Add Tool</h2>
+          <div><label class="block text-sm font-medium text-gray-700 mb-1">Name</label>
+            <input type="text" x-model="f.name" /></div>
+          <div><label class="block text-sm font-medium text-gray-700 mb-1">Category</label>
+            <input type="text" x-model="f.category" /></div>
+          <div><label class="block text-sm font-medium text-gray-700 mb-1">Description</label>
+            <textarea x-model="f.description" rows="2"></textarea></div>
+          <!-- Capability tags -->
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Capabilities</label>
+            <!-- Selected tags -->
+            <template x-if="f.capabilityTags?.length">
+              <div class="flex flex-wrap gap-1 mb-2">
+                <template x-for="tag in f.capabilityTags" :key="tag">
+                  <span class="inline-flex items-center gap-1 bg-indigo-100 text-indigo-800 rounded-full px-2 py-0.5 text-xs font-medium">
+                    <span x-text="tag"></span>
+                    <button @click="toggleCapTag(tag)" class="text-indigo-400 hover:text-indigo-700 leading-none">&times;</button>
+                  </span>
+                </template>
+              </div>
+            </template>
+            <!-- Add custom tag -->
+            <div class="flex gap-2 mb-2">
+              <input type="text" x-model="f.capNewTag" @keydown.enter.prevent="addCustomCapTag()" placeholder="Type a custom tag and press Enter…" class="flex-1 text-sm" />
+              <button @click="addCustomCapTag()" class="btn btn-ghost text-xs px-3">Add</button>
+            </div>
+            <!-- Existing tags from catalog -->
+            <template x-if="f._allTags?.length">
+              <div>
+                <p class="text-xs text-gray-500 mb-1">Click to add existing tags:</p>
+                <div class="flex flex-wrap gap-1 max-h-32 overflow-y-auto border rounded p-2 bg-gray-50">
+                  <template x-for="tag in f._allTags" :key="tag">
+                    <button @click="toggleCapTag(tag)"
+                      class="text-xs rounded-full px-2 py-0.5 border transition-colors"
+                      :class="f.capabilityTags?.includes(tag)?'bg-indigo-600 text-white border-indigo-600':'bg-white text-gray-600 border-gray-300 hover:border-indigo-400 hover:text-indigo-700'"
+                      x-text="tag"></button>
+                  </template>
+                </div>
+              </div>
+            </template>
+          </div>
+          <div class="flex justify-end gap-3 pt-2">
+            <button @click="modal=null" class="btn btn-ghost">Cancel</button>
+            <button @click="createTool()" class="btn btn-primary">Add</button>
+          </div>
+        </div>
+      </template>
+
+      <!-- Risk Acceptance -->
+      <template x-if="modal==='riskAcceptance'">
+        <div class="p-6 space-y-4">
+          <h2 class="text-lg font-semibold">Record Risk Acceptance</h2>
+          <div><label class="block text-sm font-medium text-gray-700 mb-1">Control ID</label>
+            <input type="text" x-model="f.control_id" placeholder="e.g. CC6.1" /></div>
+          <div><label class="block text-sm font-medium text-gray-700 mb-1">Risk Rating</label>
+            <select x-model="f.risk_rating">
+              <option value="critical">Critical</option><option value="high">High</option>
+              <option value="medium">Medium</option><option value="low">Low</option>
+            </select></div>
+          <div><label class="block text-sm font-medium text-gray-700 mb-1">Justification <span class="text-red-500">*</span></label>
+            <textarea x-model="f.justification" rows="3" placeholder="Describe why this risk is being accepted…"></textarea></div>
+          <div><label class="block text-sm font-medium text-gray-700 mb-1">Residual Risk Notes</label>
+            <textarea x-model="f.residual_risk_notes" rows="2" placeholder="Remaining exposure after mitigating controls…"></textarea></div>
+          <div><label class="block text-sm font-medium text-gray-700 mb-1">Expires (optional)</label>
+            <input type="date" x-model="f.expires_at" /></div>
+          <div class="flex justify-end gap-3 pt-2">
+            <button @click="modal=null" class="btn btn-ghost">Cancel</button>
+            <button @click="createRiskAcceptance()" class="btn btn-primary">Record</button>
+          </div>
+        </div>
+      </template>
+
+      <!-- Create Auditor Share -->
+      <template x-if="modal==='createShare'">
+        <div class="p-6 space-y-4">
+          <h2 class="text-lg font-semibold">Create Auditor Share Link</h2>
+          <p class="text-xs text-gray-500">Generates a scoped, read-only access token for an external auditor. The token is shown once — copy it immediately.</p>
+          <div><label class="block text-sm font-medium text-gray-700 mb-1">Auditor Name <span class="text-red-500">*</span></label>
+            <input type="text" x-model="f.auditor_name" placeholder="Jane Smith" /></div>
+          <div><label class="block text-sm font-medium text-gray-700 mb-1">Auditor Email</label>
+            <input type="email" x-model="f.auditor_email" placeholder="jane@auditor.com" /></div>
+          <div><label class="block text-sm font-medium text-gray-700 mb-1">Expires (optional)</label>
+            <input type="date" x-model="f.expires_at" /></div>
+          <div class="flex justify-end gap-3 pt-2">
+            <button @click="modal=null" class="btn btn-ghost">Cancel</button>
+            <button @click="createAuditorShare()" class="btn btn-primary">Create</button>
+          </div>
+        </div>
+      </template>
+
+      <!-- Manage Tools in Scope -->
+      <template x-if="modal==='manageTools'">
+        <div class="p-6 space-y-4">
+          <h2 class="text-lg font-semibold">Manage Tools in Scope</h2>
+          <p class="text-xs text-gray-500">Select the tools deployed in this assessment. Coverage scores recalculate when tools change.</p>
+          <div class="max-h-96 overflow-y-auto border rounded-lg p-3 space-y-0.5">
+            <template x-for="cat in [...new Set(tools.map(t=>t.category||'Other'))].sort()" :key="cat">
+              <div>
+                <p class="text-xs font-semibold text-gray-500 uppercase tracking-wide mt-3 mb-1" x-text="cat"></p>
+                <template x-for="t in tools.filter(t=>(t.category||'Other')===cat)" :key="t.id">
+                  <label class="flex items-center gap-2 py-1 px-1 rounded cursor-pointer hover:bg-gray-50">
+                    <input type="checkbox" :value="t.id" x-model="f.toolIds" class="w-4 h-4 text-indigo-600" />
+                    <span class="text-sm text-gray-800" x-text="t.name"></span>
+                  </label>
+                </template>
+              </div>
+            </template>
+          </div>
+          <p class="text-xs text-gray-400" x-text="(f.toolIds||[]).length+' tool(s) selected'"></p>
+          <div class="flex justify-end gap-3 pt-2">
+            <button @click="modal=null" class="btn btn-ghost">Cancel</button>
+            <button @click="saveAssessmentTools()" class="btn btn-primary">Save</button>
+          </div>
+        </div>
+      </template>
+
+      <!-- Confirm Delete -->
+      <template x-if="modal==='confirm'">
+        <div class="p-6 space-y-4">
+          <h2 class="text-lg font-semibold text-red-700">Confirm</h2>
+          <p class="text-sm text-gray-600" x-text="confirmMsg"></p>
+          <div class="flex justify-end gap-3 pt-2">
+            <button @click="modal=null" class="btn btn-ghost">Cancel</button>
+            <button @click="doConfirm()" class="btn btn-red">Delete</button>
+          </div>
+        </div>
+      </template>
+
+      <!-- Invite User -->
+      <template x-if="modal==='inviteUser'">
+        <div class="p-6 space-y-4">
+          <h2 class="text-lg font-semibold">Invite User</h2>
+          <p class="text-xs text-gray-500">The invited user sets their own password via a secure link. No password is required from you.</p>
+          <template x-if="!inviteResult">
+            <div class="space-y-4">
+              <div class="grid grid-cols-2 gap-3">
+                <div><label class="block text-sm font-medium text-gray-700 mb-1">Username</label>
+                  <input type="text" x-model="f.username" /></div>
+                <div><label class="block text-sm font-medium text-gray-700 mb-1">Role</label>
+                  <select x-model="f.role">
+                    <option value="viewer">Viewer</option>
+                    <option value="contributor">Contributor</option>
+                    <option value="admin">Admin</option>
+                  </select></div>
+              </div>
+              <div class="grid grid-cols-2 gap-3">
+                <div><label class="block text-sm font-medium text-gray-700 mb-1">Full Name</label>
+                  <input type="text" x-model="f.full_name" /></div>
+                <div><label class="block text-sm font-medium text-gray-700 mb-1">Email</label>
+                  <input type="email" x-model="f.email" placeholder="For invite email (optional)" /></div>
+              </div>
+              <div class="flex justify-end gap-3 pt-2">
+                <button @click="modal=null" class="btn btn-ghost">Cancel</button>
+                <button @click="sendInvite()" class="btn btn-primary">Send Invite</button>
+              </div>
+            </div>
+          </template>
+          <template x-if="inviteResult">
+            <div class="space-y-4">
+              <div class="bg-green-50 border border-green-200 rounded-lg p-4 text-sm">
+                <p class="font-semibold text-green-800 mb-2" x-text="inviteResult.email_sent ? '✓ Invite email sent to '+f.email+' — link also shown below' : '✓ Invite created — share this link'"></p>
+                <p class="text-xs text-gray-600 mb-1">Single-use link, valid <span x-text="inviteResult.expires_hours"></span>h:</p>
+                <div class="flex items-stretch gap-2">
+                  <code class="flex-1 bg-white border border-green-200 rounded px-3 py-2 text-xs font-mono break-all"
+                        x-text="inviteResult.invite_url || (window.location.origin+'/accept-invite?invite='+inviteResult.invite_token)"></code>
+                  <button
+                    @click="navigator.clipboard.writeText(inviteResult.invite_url || (window.location.origin+'/accept-invite?invite='+inviteResult.invite_token)).then(()=>notify('Link copied!'))"
+                    class="btn btn-ghost text-xs px-3 flex-shrink-0">Copy</button>
+                </div>
+              </div>
+              <div class="flex justify-end">
+                <button @click="modal=null; inviteResult=null" class="btn btn-primary">Done</button>
+              </div>
+            </div>
+          </template>
+        </div>
+      </template>
+
+      <!-- Add Comment -->
+      <template x-if="modal==='comment'">
+        <div class="p-6 space-y-4">
+          <h2 class="text-lg font-semibold">Add Comment</h2>
+          <div><label class="block text-sm font-medium text-gray-700 mb-1">Control ID <span class="text-gray-400 font-normal">(optional)</span></label>
+            <input type="text" x-model="f.control_id" placeholder="e.g. CC6.1 — leave blank for a general comment" /></div>
+          <div><label class="block text-sm font-medium text-gray-700 mb-1">Comment</label>
+            <textarea x-model="f.comment_text" rows="4" placeholder="Your observation…"></textarea></div>
+          <label class="flex items-center gap-2 text-sm">
+            <input type="checkbox" x-model="f.is_internal" class="w-4 h-4" />
+            Internal (not visible to external auditors)
+          </label>
+          <div class="flex justify-end gap-3 pt-2">
+            <button @click="modal=null" class="btn btn-ghost">Cancel</button>
+            <button @click="submitComment()" class="btn btn-primary">Post</button>
+          </div>
+        </div>
+      </template>
+
+      <!-- Import Tools JSON -->
+      <template x-if="modal==='importTools'">
+        <div class="p-6 space-y-4">
+          <h2 class="text-lg font-semibold">Import Tools from JSON</h2>
+          <p class="text-xs text-gray-500">Upload a JSON array of tool objects. Tools with matching names are skipped. Download the template first to see the expected format.</p>
+          <div><label class="block text-sm font-medium text-gray-700 mb-1">JSON file</label>
+            <input type="file" id="importToolsFile" accept=".json,application/json" class="w-full text-sm" /></div>
+          <div class="flex justify-end gap-3 pt-2">
+            <button @click="modal=null" class="btn btn-ghost">Cancel</button>
+            <button @click="importTools()" class="btn btn-primary">Import</button>
+          </div>
+        </div>
+      </template>
+
+      <!-- Import CIS XLSX -->
+      <template x-if="modal==='importCis'">
+        <div class="p-6 space-y-4">
+          <h2 class="text-lg font-semibold">Import CIS Controls from XLSX</h2>
+          <p class="text-xs text-gray-500">Upload the official CIS Controls workbook (XLSX format). Controls are added; existing controls with the same ID are skipped.</p>
+          <div><label class="block text-sm font-medium text-gray-700 mb-1">XLSX file</label>
+            <input type="file" id="importCisFile" accept=".xlsx,.xls" class="w-full text-sm" /></div>
+          <div class="flex justify-end gap-3 pt-2">
+            <button @click="modal=null" class="btn btn-ghost">Cancel</button>
+            <button @click="importCisXlsx()" class="btn btn-primary">Import</button>
+          </div>
+        </div>
+      </template>
+
+      <!-- Import NIST CSF XLSX -->
+      <template x-if="modal==='importNistCsf'">
+        <div class="p-6 space-y-4">
+          <h2 class="text-lg font-semibold">Import NIST CSF 2.0 from XLSX</h2>
+          <p class="text-xs text-gray-500">Upload the official NIST Cybersecurity Framework 2.0 workbook (XLSX format) available from nist.gov. Categories become controls; subcategories are stored as sub-controls. Tag mappings for compliance coverage are applied automatically. Existing categories are skipped.</p>
+          <div><label class="block text-sm font-medium text-gray-700 mb-1">XLSX file</label>
+            <input type="file" id="importNistCsfFile" accept=".xlsx,.xls" class="w-full text-sm" /></div>
+          <div class="flex justify-end gap-3 pt-2">
+            <button @click="modal=null" class="btn btn-ghost">Cancel</button>
+            <button @click="importNistCsfXlsx()" class="btn btn-primary">Import</button>
+          </div>
+        </div>
+      </template>
+
+      <!-- MFA Setup -->
+      <template x-if="modal==='mfaSetup'">
+        <div class="p-6 space-y-5">
+          <h2 class="text-lg font-semibold">Enable Two-Factor Authentication</h2>
+          <template x-if="!mfaSetup">
+            <div class="flex items-center justify-center py-8">
+              <div class="w-6 h-6 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin"></div>
+            </div>
+          </template>
+          <template x-if="mfaSetup">
+            <div class="space-y-4">
+              <div class="text-center">
+                <p class="text-sm text-gray-600 mb-3">Scan this QR code with your authenticator app (Google Authenticator, Authy, 1Password, etc.)</p>
+                <div class="inline-block bg-white border border-gray-200 rounded-lg p-3" x-html="mfaSetup.qr_svg"></div>
+              </div>
+              <div>
+                <p class="text-xs text-gray-500 text-center mb-1">Or enter the secret manually:</p>
+                <code class="block text-center text-sm font-mono bg-gray-50 border border-gray-200 rounded px-3 py-2 break-all" x-text="mfaSetup.secret"></code>
+              </div>
+              <div class="border-t border-gray-100 pt-4">
+                <label class="block text-sm font-medium text-gray-700 mb-1">Verify — enter the 6-digit code to confirm setup</label>
+                <input type="text" x-model="f.mfaCode" placeholder="000000" maxlength="6" inputmode="numeric" autocomplete="one-time-code" class="text-center text-xl tracking-[0.5em] font-mono" @keyup.enter="confirmMFASetup()" />
+              </div>
+            </div>
+          </template>
+          <div class="flex justify-end gap-3 pt-2">
+            <button @click="modal=null; mfaSetup=null; f.mfaCode=''" class="btn btn-ghost">Cancel</button>
+            <button @click="confirmMFASetup()" class="btn btn-primary" :disabled="!mfaSetup">Confirm &amp; Enable</button>
+          </div>
+        </div>
+      </template>
+
+      <!-- MFA Disable -->
+      <template x-if="modal==='disableMFA'">
+        <div class="p-6 space-y-4">
+          <h2 class="text-lg font-semibold">Disable Two-Factor Authentication</h2>
+          <div class="bg-amber-50 border border-amber-200 rounded-lg px-4 py-3 text-sm text-amber-800">
+            Disabling MFA reduces the security of your account. You will need to re-enable it and re-enroll your authenticator app.
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Enter your current 6-digit code to confirm</label>
+            <input type="text" x-model="f.mfaCode" placeholder="000000" maxlength="6" inputmode="numeric" autocomplete="one-time-code" class="text-center text-xl tracking-[0.5em] font-mono" @keyup.enter="disableMFA()" />
+          </div>
+          <div class="flex justify-end gap-3 pt-2">
+            <button @click="modal=null; f.mfaCode=''" class="btn btn-ghost">Cancel</button>
+            <button @click="disableMFA()" class="btn btn-primary bg-red-600 hover:bg-red-700 border-red-600">Disable MFA</button>
+          </div>
+        </div>
+      </template>
+
+    </div>
+  </div>
+</template>
+
+</body>
+</html>
