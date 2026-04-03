@@ -1,0 +1,283 @@
+{
+  "bomFormat": "CycloneDX",
+  "specVersion": "1.5",
+  "serialNumber": "urn:uuid:caams-enterprise-sbom-20260306",
+  "version": 1,
+  "metadata": {
+    "timestamp": "2026-03-06T00:00:00Z",
+    "tools": [
+      {
+        "vendor": "Manual Analysis",
+        "name": "CAAMS Security Review",
+        "version": "1.0"
+      }
+    ],
+    "component": {
+      "type": "application",
+      "name": "caams-enterprise",
+      "version": "1.1.0",
+      "description": "CAAMS Enterprise — Unified Audit Platform",
+      "licenses": [
+        { "license": { "id": "AGPL-3.0-or-later" } }
+      ]
+    }
+  },
+  "components": [
+    {
+      "type": "library",
+      "name": "fastapi",
+      "version": "0.129.0",
+      "purl": "pkg:pypi/fastapi@0.129.0",
+      "licenses": [{ "license": { "id": "MIT" } }],
+      "description": "FastAPI web framework"
+    },
+    {
+      "type": "library",
+      "name": "starlette",
+      "version": "0.45.3",
+      "purl": "pkg:pypi/starlette@0.45.3",
+      "licenses": [{ "license": { "id": "BSD-3-Clause" } }],
+      "description": "ASGI framework/toolkit (transitive via fastapi)"
+    },
+    {
+      "type": "library",
+      "name": "uvicorn",
+      "version": "0.41.0",
+      "purl": "pkg:pypi/uvicorn@0.41.0",
+      "licenses": [{ "license": { "id": "BSD-3-Clause" } }],
+      "description": "ASGI server"
+    },
+    {
+      "type": "library",
+      "name": "h11",
+      "version": "0.14.0",
+      "purl": "pkg:pypi/h11@0.14.0",
+      "licenses": [{ "license": { "id": "MIT" } }],
+      "description": "HTTP/1.1 library (transitive via uvicorn)"
+    },
+    {
+      "type": "library",
+      "name": "httptools",
+      "version": "0.6.4",
+      "purl": "pkg:pypi/httptools@0.6.4",
+      "licenses": [{ "license": { "id": "MIT" } }],
+      "description": "HTTP parser (transitive via uvicorn[standard])"
+    },
+    {
+      "type": "library",
+      "name": "websockets",
+      "version": "14.2",
+      "purl": "pkg:pypi/websockets@14.2",
+      "licenses": [{ "license": { "id": "BSD-3-Clause" } }],
+      "description": "WebSocket support (transitive via uvicorn[standard])"
+    },
+    {
+      "type": "library",
+      "name": "pydantic",
+      "version": "2.12.5",
+      "purl": "pkg:pypi/pydantic@2.12.5",
+      "licenses": [{ "license": { "id": "MIT" } }],
+      "description": "Data validation library"
+    },
+    {
+      "type": "library",
+      "name": "pydantic-core",
+      "version": "2.33.2",
+      "purl": "pkg:pypi/pydantic-core@2.33.2",
+      "licenses": [{ "license": { "id": "MIT" } }],
+      "description": "Pydantic core implementation (transitive via pydantic v2)"
+    },
+    {
+      "type": "library",
+      "name": "sqlalchemy",
+      "version": "2.0.46",
+      "purl": "pkg:pypi/sqlalchemy@2.0.46",
+      "licenses": [{ "license": { "id": "MIT" } }],
+      "description": "SQL ORM toolkit"
+    },
+    {
+      "type": "library",
+      "name": "alembic",
+      "version": "1.15.1",
+      "purl": "pkg:pypi/alembic@1.15.1",
+      "licenses": [{ "license": { "id": "MIT" } }],
+      "description": "Database migrations for SQLAlchemy"
+    },
+    {
+      "type": "library",
+      "name": "mako",
+      "version": "1.3.9",
+      "purl": "pkg:pypi/mako@1.3.9",
+      "licenses": [{ "license": { "id": "MIT" } }],
+      "description": "Template library (transitive via alembic)"
+    },
+    {
+      "type": "library",
+      "name": "psycopg2-binary",
+      "version": "2.9.10",
+      "purl": "pkg:pypi/psycopg2-binary@2.9.10",
+      "licenses": [{ "license": { "id": "LGPL-3.0-or-later" } }],
+      "description": "PostgreSQL adapter for Python"
+    },
+    {
+      "type": "library",
+      "name": "python-multipart",
+      "version": "0.0.22",
+      "purl": "pkg:pypi/python-multipart@0.0.22",
+      "licenses": [{ "license": { "id": "Apache-2.0" } }],
+      "description": "Multipart form parsing"
+    },
+    {
+      "type": "library",
+      "name": "aiofiles",
+      "version": "25.1.0",
+      "purl": "pkg:pypi/aiofiles@25.1.0",
+      "licenses": [{ "license": { "id": "Apache-2.0" } }],
+      "description": "Async file I/O"
+    },
+    {
+      "type": "library",
+      "name": "httpx",
+      "version": "0.28.1",
+      "purl": "pkg:pypi/httpx@0.28.1",
+      "licenses": [{ "license": { "id": "BSD-3-Clause" } }],
+      "description": "HTTP client (used in tests and OIDC flow)"
+    },
+    {
+      "type": "library",
+      "name": "anyio",
+      "version": "4.9.0",
+      "purl": "pkg:pypi/anyio@4.9.0",
+      "licenses": [{ "license": { "id": "MIT" } }],
+      "description": "Async compatibility (transitive via httpx, starlette)"
+    },
+    {
+      "type": "library",
+      "name": "httpcore",
+      "version": "1.0.8",
+      "purl": "pkg:pypi/httpcore@1.0.8",
+      "licenses": [{ "license": { "id": "BSD-3-Clause" } }],
+      "description": "HTTP transport layer (transitive via httpx)"
+    },
+    {
+      "type": "library",
+      "name": "slowapi",
+      "version": "0.1.9",
+      "purl": "pkg:pypi/slowapi@0.1.9",
+      "licenses": [{ "license": { "id": "MIT" } }],
+      "description": "Rate limiting for FastAPI/Starlette"
+    },
+    {
+      "type": "library",
+      "name": "limits",
+      "version": "3.14.1",
+      "purl": "pkg:pypi/limits@3.14.1",
+      "licenses": [{ "license": { "id": "MIT" } }],
+      "description": "Rate limiting backend (transitive via slowapi)"
+    },
+    {
+      "type": "library",
+      "name": "pyotp",
+      "version": "2.9.0",
+      "purl": "pkg:pypi/pyotp@2.9.0",
+      "licenses": [{ "license": { "id": "MIT" } }],
+      "description": "TOTP/HOTP implementation for MFA"
+    },
+    {
+      "type": "library",
+      "name": "qrcode",
+      "version": "8.0",
+      "purl": "pkg:pypi/qrcode@8.0",
+      "licenses": [{ "license": { "id": "BSD-3-Clause" } }],
+      "description": "QR code generation"
+    },
+    {
+      "type": "library",
+      "name": "openpyxl",
+      "version": "3.1.5",
+      "purl": "pkg:pypi/openpyxl@3.1.5",
+      "licenses": [{ "license": { "id": "MIT" } }],
+      "description": "Excel XLSX file handling"
+    },
+    {
+      "type": "library",
+      "name": "et-xmlfile",
+      "version": "2.0.0",
+      "purl": "pkg:pypi/et-xmlfile@2.0.0",
+      "licenses": [{ "license": { "id": "MIT" } }],
+      "description": "XML file support (transitive via openpyxl)"
+    },
+    {
+      "type": "library",
+      "name": "reportlab",
+      "version": "4.4.10",
+      "purl": "pkg:pypi/reportlab@4.4.10",
+      "licenses": [{ "license": { "id": "BSD-3-Clause" } }],
+      "description": "PDF generation library"
+    },
+    {
+      "type": "library",
+      "name": "chardet",
+      "version": "5.2.0",
+      "purl": "pkg:pypi/chardet@5.2.0",
+      "licenses": [{ "license": { "id": "LGPL-2.1-or-later" } }],
+      "description": "Character encoding detection (transitive via reportlab)"
+    },
+    {
+      "type": "library",
+      "name": "alpinejs",
+      "version": "3.14.9",
+      "purl": "pkg:npm/alpinejs@3.14.9",
+      "licenses": [{ "license": { "id": "MIT" } }],
+      "description": "Frontend JS framework (vendored)"
+    },
+    {
+      "type": "library",
+      "name": "chart.js",
+      "version": "4.4.7",
+      "purl": "pkg:npm/chart.js@4.4.7",
+      "licenses": [{ "license": { "id": "MIT" } }],
+      "description": "Chart library (vendored)"
+    },
+    {
+      "type": "library",
+      "name": "tailwindcss",
+      "version": "play-cdn-latest",
+      "purl": "pkg:generic/tailwindcss@play-cdn",
+      "licenses": [{ "license": { "id": "MIT" } }],
+      "description": "CSS framework play CDN (vendored — version pinned at image build)"
+    },
+    {
+      "type": "library",
+      "name": "typing-extensions",
+      "version": "4.13.2",
+      "purl": "pkg:pypi/typing-extensions@4.13.2",
+      "licenses": [{ "license": { "id": "PSF-2.0" } }],
+      "description": "Typing backports (transitive)"
+    },
+    {
+      "type": "library",
+      "name": "sniffio",
+      "version": "1.3.1",
+      "purl": "pkg:pypi/sniffio@1.3.1",
+      "licenses": [{ "license": { "id": "MIT" } }],
+      "description": "Async framework detection (transitive)"
+    },
+    {
+      "type": "library",
+      "name": "click",
+      "version": "8.1.8",
+      "purl": "pkg:pypi/click@8.1.8",
+      "licenses": [{ "license": { "id": "BSD-3-Clause" } }],
+      "description": "CLI framework (transitive via uvicorn)"
+    },
+    {
+      "type": "library",
+      "name": "python-dotenv",
+      "version": "1.1.0",
+      "purl": "pkg:pypi/python-dotenv@1.1.0",
+      "licenses": [{ "license": { "id": "BSD-3-Clause" } }],
+      "description": "Env file loading (transitive via uvicorn[standard])"
+    }
+  ]
+}

@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Privacy Policy — CAAMS Enterprise</title>
+<script src="/static/vendor/tailwind.cdn.js" onerror="var s=document.createElement('script');s.src='https://cdn.tailwindcss.com';document.head.appendChild(s)"></script>
+<link rel="stylesheet" href="/static/app.css" />
+</head>
+<body class="bg-gray-50 text-gray-800">
+<div class="max-w-3xl mx-auto px-6 py-12">
+  <div class="mb-8">
+    <a href="/" class="text-indigo-600 hover:underline text-sm">&larr; Back to CAAMS Enterprise</a>
+  </div>
+  <h1 class="text-3xl font-bold text-gray-900 mb-2">Privacy Policy</h1>
+  <p class="text-sm text-gray-500 mb-8">Effective date: March 2, 2026</p>
+
+  <div class="prose max-w-none space-y-6 text-sm leading-relaxed text-gray-700">
+
+    <section>
+      <h2 class="text-lg font-semibold text-gray-900 mb-2">1. Overview</h2>
+      <p>CAAMS Enterprise ("the Software") is a self-hosted audit and compliance management platform. This Privacy Policy describes how data is collected, stored, and used when you or your organization deploys and operates the Software.</p>
+      <p class="mt-2">Because CAAMS Enterprise is deployed on infrastructure you control, your organization is the data controller for all personal data stored in the system. This policy describes the Software's data practices; your organization's own privacy policies and data processing agreements govern your end users' rights.</p>
+    </section>
+
+    <section>
+      <h2 class="text-lg font-semibold text-gray-900 mb-2">2. Data We Collect</h2>
+      <p>The following categories of data are stored in the database and logs when you use the Software:</p>
+      <ul class="list-disc pl-5 mt-2 space-y-1">
+        <li><strong>Account data:</strong> usernames, email addresses, hashed passwords (PBKDF2-SHA256, 600,000 iterations), account roles, and account creation timestamps.</li>
+        <li><strong>Authentication data:</strong> TOTP (MFA) secrets stored encrypted at rest, OIDC subject identifiers and provider information, session tokens (stored as hashed values), and token version counters used for revocation.</li>
+        <li><strong>Audit and activity data:</strong> an immutable audit log recording user actions (assessments created/updated, evidence uploaded, logins, permission changes) including the acting username, timestamp, IP address, and action detail.</li>
+        <li><strong>Assessment and compliance data:</strong> assessment names, framework selections, control responses, evidence descriptions, file references, findings, RFIs, and comments entered by users.</li>
+        <li><strong>Application logs:</strong> structured JSON logs written to <code>logs/app.log</code> and emitted to stdout, including log level, logger name, message, and any additional fields provided at call sites (which may include usernames and IP addresses).</li>
+      </ul>
+    </section>
+
+    <section>
+      <h2 class="text-lg font-semibold text-gray-900 mb-2">3. How Data Is Used</h2>
+      <p>Data collected by the Software is used exclusively to:</p>
+      <ul class="list-disc pl-5 mt-2 space-y-1">
+        <li>Authenticate users and enforce role-based access control.</li>
+        <li>Provide audit and compliance management features to authorized users.</li>
+        <li>Maintain an immutable audit trail of user actions for compliance and security purposes.</li>
+        <li>Diagnose application errors and monitor system health.</li>
+      </ul>
+      <p class="mt-2">CAAMS Enterprise does not transmit any user data to external services, analytics platforms, or third parties unless your deployment explicitly integrates with an external identity provider (OIDC) or SIEM system of your choosing.</p>
+    </section>
+
+    <section>
+      <h2 class="text-lg font-semibold text-gray-900 mb-2">4. Data Storage and Retention</h2>
+      <p>All data is stored in the PostgreSQL database and log files on your infrastructure. The Software does not enforce a data retention period by default; your organization is responsible for defining and implementing retention policies appropriate to your compliance obligations.</p>
+      <p class="mt-2">Log files are rotated at 10 MB with five backup files retained (approximately 50 MB total per log stream). Older log files are deleted automatically by the log rotation process.</p>
+    </section>
+
+    <section>
+      <h2 class="text-lg font-semibold text-gray-900 mb-2">5. Data Security</h2>
+      <p>The Software implements the following security controls:</p>
+      <ul class="list-disc pl-5 mt-2 space-y-1">
+        <li>Passwords hashed with PBKDF2-SHA256 at 600,000 iterations.</li>
+        <li>Session tokens stored as hashed values; raw tokens are never persisted.</li>
+        <li>MFA secrets encrypted at rest using AES-GCM via the <code>CAAMS_SECRET_KEY</code> environment variable.</li>
+        <li>All API endpoints require authentication except login, setup, and public share routes.</li>
+        <li>Rate limiting applied to all authentication and sensitive endpoints.</li>
+        <li>Security headers (X-Frame-Options, X-Content-Type-Options, Referrer-Policy, Permissions-Policy) set on all responses.</li>
+      </ul>
+    </section>
+
+    <section>
+      <h2 class="text-lg font-semibold text-gray-900 mb-2">6. Third-Party Integrations</h2>
+      <p>The Software may integrate with the following external services, all of which are configured and controlled by your organization:</p>
+      <ul class="list-disc pl-5 mt-2 space-y-1">
+        <li><strong>OIDC Identity Provider:</strong> if SSO is enabled, usernames, email addresses, and OIDC subject identifiers are exchanged with your configured IdP during authentication.</li>
+        <li><strong>SIEM / Log Management:</strong> if your infrastructure routes log output to an external SIEM, the structured JSON logs described in Section 2 will be ingested by that system under your organization's data processing policies.</li>
+        <li><strong>SMTP:</strong> if email notifications are enabled, user email addresses are transmitted to your configured SMTP server for notification delivery.</li>
+      </ul>
+    </section>
+
+    <section>
+      <h2 class="text-lg font-semibold text-gray-900 mb-2">7. Individual Rights</h2>
+      <p>If your organization is subject to GDPR, CCPA, or similar regulations, you are responsible as the data controller for handling data subject requests (access, deletion, portability, correction). The Software provides admin-accessible user management and audit log export features that can assist with fulfilling these requests.</p>
+    </section>
+
+    <section>
+      <h2 class="text-lg font-semibold text-gray-900 mb-2">8. Changes to This Policy</h2>
+      <p>This policy may be updated as the Software evolves. The effective date at the top of this page reflects the most recent revision. Material changes will be noted in the release changelog.</p>
+    </section>
+
+    <section>
+      <h2 class="text-lg font-semibold text-gray-900 mb-2">9. License</h2>
+      <p>CAAMS Enterprise is released under the <a href="https://www.gnu.org/licenses/agpl-3.0.html" class="text-indigo-600 hover:underline" target="_blank" rel="noopener noreferrer">GNU Affero General Public License v3.0 (AGPL-3.0)</a>. The full license text is included in the source repository at <a href="https://github.com/naterohrer/caams-enterprise-prod/blob/main/LICENSE" class="text-indigo-600 hover:underline" target="_blank" rel="noopener noreferrer">github.com/naterohrer/caams-enterprise-prod</a>.</p>
+    </section>
+
+  </div>
+
+  <div class="mt-12 pt-6 border-t border-gray-200 text-xs text-gray-400 flex gap-4">
+    <a href="/terms" class="hover:text-indigo-600">Terms of Service</a>
+    <a href="/" class="hover:text-indigo-600">Back to App</a>
+  </div>
+</div>
+</body>
+</html>
